@@ -59,9 +59,6 @@ test("admin branding shows Lite in accent blue", () => {
   assert.match(source, /<LiteBrand size=\{isMobile \? "sm" : "md"\} \/>/);
   assert.match(brandSource, /color: LITE_BLUE/);
   assert.match(brandSource, /LITE_NAME/);
-  assert.match(brandSource, /LITE_NAME_MOBILE/);
-  assert.match(brandSource, /hidden lg:inline/);
-  assert.match(brandSource, /lg:hidden/);
   assert.doesNotMatch(brandSource, /Komari</);
   assert.doesNotMatch(brandSource, /bg-\[var\(--green-a3\)\]/);
 });

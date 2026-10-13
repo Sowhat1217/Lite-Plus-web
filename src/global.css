@@ -818,36 +818,6 @@ html.dark .km-node-deploy-dialog .km-admin-sheet-tabs {
   max-width: none;
 }
 
-.km-expiry-quick-actions {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 16px;
-}
-
-.km-expiry-quick-action {
-  margin: 0;
-  padding: 2px 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.4;
-  cursor: pointer;
-}
-
-.km-expiry-quick-action:hover {
-  color: var(--accent-11);
-}
-
-.km-expiry-quick-action:focus-visible {
-  outline: 2px solid var(--accent-8);
-  outline-offset: 2px;
-  border-radius: 4px;
-}
-
 @media (max-width: 1023px) {
   .km-node-billing-dialog .km-traffic-reset-clock-row {
     grid-template-columns: minmax(0, 1fr) minmax(9.25rem, 1.15fr);

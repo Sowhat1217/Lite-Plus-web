@@ -78,7 +78,7 @@ export default function MigrationGuideShell({
             <Box
               component="img"
               src={getAppAssetUrl("assets/logo.png?v=lite-icon-0e86dd")}
-              alt={LITE_NAME}
+              alt="Lite"
               sx={{ width: 34, height: 34, objectFit: "contain" }}
             />
             <Typography
