@@ -1,6 +1,14 @@
 export const LITE_AGENT_GITHUB_REPO = "nuomiiiii/Lite-agent";
 export const LITE_AGENT_DOCKER_IMAGE = "ghcr.io/nuomiiiii/Lite-agent:latest";
 
+export function defaultInstallGitHubProxy(
+  settings?: { github_proxy?: unknown } | null,
+): string {
+  return typeof settings?.github_proxy === "string"
+    ? settings.github_proxy.trim()
+    : "";
+}
+
 export function liteAgentInstallScriptUrl(
   scriptFile: "install.sh" | "install.ps1",
   ghproxy = "",
