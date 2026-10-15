@@ -1248,7 +1248,7 @@
     "duration_invalid": "请输入允许范围内的整数分钟或小时。",
     "duration_label": "授权时长",
     "edit_authorization": "编辑授权",
-    "edit_authorization_hint": "修改服务器范围和用途备注，默认保留原有效期。保存需要再次验证，并会中断此授权正在运行的操作和终端。已结束的授权不能编辑。",
+    "edit_authorization_hint": "修改服务器范围和用途备注，默认保留原有效期。保存需要再次验证。改范围或有效期会中断此授权正在运行的操作和终端；只改备注不会中断。已结束的授权不能编辑。",
     "endpoint": "MCP 代理服务地址",
     "endpoint_guide": "支持浏览器授权的客户端可直接连接；其他客户端使用本地适配器。",
     "endpoint_subtitle": "在 AI 客户端添加此地址，连接后通过 轻量.Lite 完成授权。",

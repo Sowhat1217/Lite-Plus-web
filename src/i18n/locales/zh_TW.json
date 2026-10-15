@@ -1344,7 +1344,7 @@
     "duration_invalid": "請輸入有效的整數。",
     "duration_label": "授權時效",
     "edit_authorization": "編輯授權",
-    "edit_authorization_hint": "修改伺服器範圍和用途備註，預設保留原有效期。儲存需要再次驗證，並會中斷此授權正在執行的操作和終端。已結束的授權不能編輯。",
+    "edit_authorization_hint": "修改伺服器範圍和用途備註，預設保留原有效期。儲存需要再次驗證。改範圍或有效期會中斷此授權正在執行的操作和終端；只改備註不會中斷。已結束的授權不能編輯。",
     "endpoint": "MCP 服務網址",
     "endpoint_guide": "支援瀏覽器授權的 AI 工具可直接連線；其他工具則需透過本機轉接器連線。",
     "endpoint_subtitle": "請將此網址新增至 AI 工具中，並依畫面提示完成 轻量.Lite 授權。",

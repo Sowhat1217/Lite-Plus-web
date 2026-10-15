@@ -74,5 +74,6 @@ test("all locales explain the scope and editing security boundary", () => {
       assert.ok(pack.mcp[key].length > 0);
     }
     assert.equal(typeof pack.audit.mcp_update, "string");
+    assert.match(pack.mcp.edit_authorization_hint, /只改备注|只改備註|only the note|メモだけ/);
   }
 });

@@ -1344,7 +1344,7 @@
     "duration_invalid": "Enter a whole number of minutes or hours within the allowed range.",
     "duration_label": "Duration",
     "edit_authorization": "Edit authorization",
-    "edit_authorization_hint": "Edit the server scope and purpose note while keeping the current expiry by default. Saving requires verification again and interrupts running operations and terminals for this authorization. Ended authorizations cannot be edited.",
+    "edit_authorization_hint": "Edit the server scope and purpose note while keeping the current expiry by default. Saving requires verification again. Changing the scope or expiry interrupts running operations and terminals; editing only the note does not. Ended authorizations cannot be edited.",
     "endpoint": "MCP Proxy endpoint",
     "endpoint_guide": "Clients with browser authorization can connect directly; others use a local adapter.",
     "endpoint_subtitle": "Add this address in an AI client, then complete authorization in 轻量.Lite.",
