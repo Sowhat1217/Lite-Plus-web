@@ -56,5 +56,5 @@ test("webhook option fields keep the selected HTTP method when saving", () => {
     settingCardSource,
     /const result: unknown = OnSave\(next, buttonRef\.current\);/,
   );
-  assert.match(notificationSource, /}, \[currentMessageSender\]\);/);
+  assert.match(notificationSource, /}, \[editingSender, t\]\);/);
 });

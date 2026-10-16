@@ -1,13 +1,12 @@
-import {
-  quotePowerShellArg,
-  quoteShellArg,
-  quoteShellArgs,
-} from "@/utils/shellQuote";
+import { quoteShellArgs } from "@/utils/shellQuote";
 import { publicVersion } from "@/utils/version";
 import {
   LITE_AGENT_DOCKER_IMAGE,
   defaultInstallGitHubProxy,
   liteAgentInstallScriptUrl,
+  liteAgentLinuxInstallCommand,
+  liteAgentMacInstallCommand,
+  liteAgentWindowsInstallCommand,
 } from "@/utils/agentInstall";
 import { normalizeOptionalServiceUrl } from "@/utils/serviceUrl";
 import { writeClipboardText } from "@/utils/clipboard";
@@ -2524,24 +2523,13 @@ function GenerateCommandButton({ node, settings, initiallyOpen = false, onClose 
     let finalCommand = "";
     switch (selectedPlatform) {
       case "linux":
-        finalCommand =
-          `wget -qO- ${quoteShellArg(scriptUrl)} | sudo bash -s -- ` +
-          quoteShellArgs(args);
+        finalCommand = liteAgentLinuxInstallCommand(scriptUrl, args);
         break;
       case "windows":
-        finalCommand =
-          `powershell.exe -NoProfile -ExecutionPolicy Bypass -Command ` +
-          `"iwr ${quotePowerShellArg(scriptUrl)}` +
-          ` -UseBasicParsing -OutFile 'install.ps1'; &` +
-          ` '.\\install.ps1'`;
-        args.forEach((arg) => {
-          finalCommand += ` ${quotePowerShellArg(arg)}`;
-        });
-        finalCommand += `"`;
+        finalCommand = liteAgentWindowsInstallCommand(scriptUrl, args);
         break;
       case "macos":
-        finalCommand =
-          `zsh <(curl -sL ${quoteShellArg(scriptUrl)}) ` + quoteShellArgs(args);
+        finalCommand = liteAgentMacInstallCommand(scriptUrl, args);
         break;
       case "docker": {
         // Docker 运行时不支持安装脚本专用参数，剔除它们及其取值

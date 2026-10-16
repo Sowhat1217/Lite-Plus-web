@@ -394,6 +394,13 @@ button.km-dashboard-chip:focus-visible {
   color: var(--red-11);
 }
 
+[data-admin-shell] .km-dashboard-chip--muted,
+html[data-admin-shell-active="true"] .km-dashboard-chip--muted {
+  background: var(--gray-a3);
+  color: var(--gray-12);
+  box-shadow: inset 0 0 0 1px var(--gray-a6);
+}
+
 .admin-cell-clip {
   display: block;
   min-width: 0;

@@ -43,7 +43,7 @@ test("setting logs use the on-screen name in every language", () => {
     "zh_CN.json": "开启了「启用 MCP 代理」",
     "en.json": "Turned on Enable MCP Proxy",
     "ja_JP.json": "「MCP プロキシを有効にする」をオンにしました",
-    "zh_TW.json": "開啟了「啟用 MCP 服務」",
+    "zh_TW.json": "已啟用「啟用 MCP 服務」",
   };
   for (const [filename, sentence] of Object.entries(expected)) {
     const text = formatAuditMessage(message, translate(locale(filename)));

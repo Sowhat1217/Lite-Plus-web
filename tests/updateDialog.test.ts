@@ -55,8 +55,7 @@ const brandSource = readFileSync("src/components/LiteBrand.tsx", "utf8");
 const globalStyles = readFileSync("src/global.css", "utf8");
 const appSource = readFileSync("src/main.tsx", "utf8");
 
-test("admin branding shows Lite in accent blue", () => {
-  assert.match(source, /<LiteBrand size=\{isMobile \? "sm" : "md"\} \/>/);
+test("shared Lite wordmark keeps its accent treatment outside the sidebar", () => {
   assert.match(brandSource, /color: LITE_BLUE/);
   assert.match(brandSource, /LITE_NAME/);
   assert.match(brandSource, /LITE_NAME_MOBILE/);

@@ -64,6 +64,7 @@ const adminRoutePreloaders: Record<string, () => Promise<unknown>> = {
   "/admin/settings/reverse-proxy": () => import("./pages/admin/settings/reverse-proxy"),
   "/admin/settings/metrics": () => import("./pages/admin/settings/metrics"),
   "/admin/settings/account-security": () => import("./pages/admin/settings/account-security"),
+  "/admin/notification/center": () => import("./pages/admin/notification/center"),
   "/admin/notification/offline": () => import("./pages/admin/notification/offline"),
   "/admin/notification/load": () => import("./pages/admin/notification/load"),
   "/admin/notification/general": () => import("./pages/admin/notification/general"),
@@ -305,6 +306,12 @@ export const routes: RouteObject[] = [
       {
         path: "notification",
         children: [
+          {
+            path: "center",
+            element: React.createElement(
+              lazy(() => import("./pages/admin/notification/center"))
+            ),
+          },
           {
             path: "offline",
             element: React.createElement(
