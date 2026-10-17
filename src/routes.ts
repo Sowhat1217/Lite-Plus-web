@@ -375,6 +375,20 @@ export const routes: RouteObject[] = [
     ],
   },
   {
+    path: "/admin-app",
+    element: React.createElement(Navigate, {
+      replace: true,
+      to: "/admin",
+    }),
+  },
+  {
+    path: "/admin-app/*",
+    element: React.createElement(Navigate, {
+      replace: true,
+      to: "/admin",
+    }),
+  },
+  {
     path: "/terminal",
     element: React.createElement(lazy(() => import("./pages/terminal"))),
   },

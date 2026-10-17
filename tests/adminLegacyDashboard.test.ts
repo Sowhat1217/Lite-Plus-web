@@ -24,6 +24,7 @@ test("upstream /admin/dashboard redirects to the Lite admin home", () => {
     routesSource,
     /path:\s*"dashboard",\s*element:\s*React\.createElement\(AdminDashboard\)/,
   );
+  assert.match(routesSource, /path:\s*"\/admin-app"/);
   const dashboardSource = readFileSync(
     new URL("../src/pages/admin/dashboard.tsx", import.meta.url),
     "utf8",
@@ -31,6 +32,8 @@ test("upstream /admin/dashboard redirects to the Lite admin home", () => {
   assert.match(dashboardSource, /path === "\/admin\/dashboard"/);
   assert.match(dashboardSource, /navigate\("\/admin", \{ replace: true \}\)/);
   assert.equal(normalizeAdminPathname("/admin/dashboard"), "/admin");
+  assert.equal(normalizeAdminPathname("/admin-app"), "/admin");
+  assert.equal(normalizeAdminPathname("/admin-app/index.html"), "/admin");
   assert.equal(
     getAdminRouteViewKey({
       pathname: "/admin/dashboard",
