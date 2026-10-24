@@ -31,7 +31,6 @@ import { emptyNodemgtTemplates, hasNodemgtTemplates, type NodemgtTemplateList } 
 import { TEMPLATE_CLIENTS } from "./subscriptionClients";
 
 type Template = { id: string; name: string; kind: string; content: string; revision?: number };
-type Binding = { scope: string; scope_id: string; client: string; template_id: string };
 type Row = { id: string; name?: string; username?: string; user_id?: string };
 type TemplateList = NodemgtTemplateList;
 type Preview = { body: string; warnings: string[] };
