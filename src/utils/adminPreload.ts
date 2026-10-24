@@ -8,6 +8,7 @@ export const LIKELY_ADMIN_ROUTES = [
   "/admin/billing",
   "/admin/ping",
   "/admin/return-route",
+  "/admin/nodemgt",
 ] as const;
 
 export const ADMIN_IDLE_WARMUP_START_DELAY_MS = 4000;
@@ -45,7 +46,9 @@ export const getIdleAdminWarmupTargets = (
 ): string[] => {
   if (!shouldPreloadAdminRoutes(connection)) return [];
   const current = normalizeAdminPathname(currentPathname);
-  const remaining = LIKELY_ADMIN_ROUTES.filter((route) => route !== current);
+  const remaining = LIKELY_ADMIN_ROUTES.filter(
+    (route) => route !== current && !current.startsWith(`${route}/`),
+  );
   if (connection?.effectiveType === "3g") return remaining.slice(0, 1);
   return [...remaining];
 };

@@ -7,6 +7,7 @@ import {
   LIKELY_ADMIN_ROUTES,
   normalizeAdminPathname,
 } from "./utils/adminPreload";
+import { isNodemgtAdminPath } from "./utils/adminRouteViewport";
 
 const importAdminLayout = () => import("./pages/admin/_layout");
 const importAdminDashboard = () => import("./pages/admin/dashboard");
@@ -35,6 +36,27 @@ const loadAdminReturnRoute = () =>
   (adminReturnRouteModule ??= importAdminReturnRoute());
 const loadAdminSettingsLayout = () =>
   (adminSettingsLayoutModule ??= importAdminSettingsLayout());
+let nodemgtAdminModule: ReturnType<typeof importNodemgtAdminPage> | undefined;
+const importNodemgtAdminPage = () => import("./pages/admin/nodemgt/index");
+const loadNodemgtAdminPage = () => (nodemgtAdminModule ??= importNodemgtAdminPage());
+const NODEMGT_ADMIN_SEGMENTS = [
+  "",
+  "overview",
+  "inbounds",
+  "forwarding",
+  "outbounds",
+  "routes",
+  "users",
+  "node-users",
+  "plans",
+  "certificates",
+  "certs",
+  "subscriptions",
+  "audit",
+  "diag",
+] as const;
+const nodemgtAdminPath = (segment: string) =>
+  segment ? `/admin/nodemgt/${segment}` : `/admin/nodemgt`;
 
 export const preloadAdminEntry = (pathname: string) => {
   void loadAdminLayout();
@@ -45,6 +67,14 @@ const adminRoutePreloaders: Record<string, () => Promise<unknown>> = {
   "/admin": loadAdminDashboard,
   "/admin/servers": loadAdminServers,
   "/admin/billing": loadAdminBilling,
+  ...Object.fromEntries(
+    (["nodemgt", "plus", "nodes"] as const).flatMap((prefix) =>
+      NODEMGT_ADMIN_SEGMENTS.map((segment) => [
+        segment ? `/admin/${prefix}/${segment}` : `/admin/${prefix}`,
+        loadNodemgtAdminPage,
+      ]),
+    ),
+  ),
   "/admin/ping": loadAdminPing,
   "/admin/return-route": loadAdminReturnRoute,
   "/admin/logs": () => import("./pages/admin/log"),
@@ -74,6 +104,11 @@ const adminRoutePreloaders: Record<string, () => Promise<unknown>> = {
 
 export const preloadAdminRoute = async (target: string): Promise<void> => {
   const pathname = normalizeAdminPathname(target);
+  if (isNodemgtAdminPath(pathname)) {
+    void import("./pages/admin/nodemgt/prefetch")
+      .then((mod) => mod.prefetchNodemgtAdmin())
+      .catch(() => undefined);
+  }
   if (pathname === "/admin/billing") {
     void import("./utils/billing")
       .then((mod) => mod.prefetchBillingCenter())
@@ -152,12 +187,6 @@ const NotFound = lazy(() => import("./pages/404"));
 
 export const routes: RouteObject[] = [
   {
-    path: "/admin/update/1.2.7",
-    element: React.createElement(
-      lazy(() => import("./pages/admin/update_1_2_7"))
-    ),
-  },
-  {
     path: "/admin/update/storage-v4",
     element: React.createElement(
       lazy(() => import("./pages/admin/update_storage_v4"))
@@ -184,6 +213,29 @@ export const routes: RouteObject[] = [
         path: "billing",
         element: React.createElement(AdminBilling),
       },
+      ...NODEMGT_ADMIN_SEGMENTS.map((segment) =>
+        segment === "diag"
+          ? {
+              path: "nodemgt/diag",
+              element: React.createElement(Navigate, {
+                replace: true,
+                to: "/admin/nodemgt/overview",
+              }),
+            }
+          : {
+              path: segment ? `nodemgt/${segment}` : "nodemgt",
+              element: React.createElement(lazy(loadNodemgtAdminPage)),
+            },
+      ),
+      ...(["plus", "nodes"] as const).flatMap((prefix) =>
+        NODEMGT_ADMIN_SEGMENTS.map((segment) => ({
+          path: segment ? `${prefix}/${segment}` : prefix,
+          element: React.createElement(Navigate, {
+            replace: true,
+            to: nodemgtAdminPath(segment),
+          }),
+        })),
+      ),
       {
         path: "servers/:uuid",
         element: React.createElement(

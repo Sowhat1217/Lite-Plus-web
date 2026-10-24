@@ -24,6 +24,15 @@ export function getAdminRouteProgressHideDelay({
   return Math.max(0, ADMIN_ROUTE_PROGRESS_MIN_VISIBLE_MS - (now - becameVisibleAt));
 }
 
+const NODEMGT_VIEW_PREFIXES = ["/admin/nodemgt", "/admin/plus", "/admin/nodes"] as const;
+
+export function isNodemgtAdminPath(pathname: string): boolean {
+  const normalized = pathname.replace(/\/$/, "") || "/";
+  return NODEMGT_VIEW_PREFIXES.some(
+    (prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`),
+  );
+}
+
 export const getAdminRouteViewKey = ({
   pathname,
 }: {
@@ -36,6 +45,7 @@ export const getAdminRouteViewKey = ({
   if (normalized === "/admin-app" || normalized.startsWith("/admin-app/")) {
     return "/admin";
   }
+  if (isNodemgtAdminPath(normalized)) return "/admin/nodemgt";
   return pathname;
 };
 

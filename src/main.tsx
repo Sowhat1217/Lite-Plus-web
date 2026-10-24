@@ -107,9 +107,7 @@ const App = () => {
 	const isAdminRoute = currentPath === "/admin" || currentPath.startsWith("/admin/");
 	const isRemoteRoute = currentPath === "/terminal" || currentPath.startsWith("/terminal/");
 	const usePlainThemeRoot = isAdminRoute || isRemoteRoute;
-	const isUpgradeRoute =
-		currentPath === "/admin/update/1.2.7" ||
-		currentPath === "/admin/update/storage-v4";
+	const isUpgradeRoute = currentPath === "/admin/update/storage-v4";
 	const isRestrictedGuideRoute =
 		isUpgradeRoute ||
 		currentPath === "/install" ||

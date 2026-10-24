@@ -105,9 +105,9 @@ export default defineConfig(({ mode }) => {
         registerType: "autoUpdate",
         includeManifestIcons: false,
         manifest: {
-          name: "轻量.Lite",
-          short_name: "Lite",
-          description: "轻量.Lite丨更适合MJJ的养老探针",
+          name: "Lite-Plus",
+          short_name: "Lite-Plus",
+          description: "Lite-Plus丨更适合MJJ的养老探针",
           theme_color: "#2563eb",
           background_color: "#ffffff",
           display: "standalone",
@@ -201,7 +201,7 @@ export default defineConfig(({ mode }) => {
         process.env[k] = envConfig[k];
       }
     }
-    const apiTarget = process.env.VITE_API_TARGET || "http://127.0.0.1:27777";
+    const apiTarget = process.env.VITE_API_TARGET || "http://127.0.0.1:28777";
     process.env.VITE_API_TARGET = apiTarget;
     const apiOrigin = new URL(apiTarget).origin;
     const proxy = {
@@ -231,6 +231,9 @@ export default defineConfig(({ mode }) => {
       "/.well-known": {
         target: apiTarget,
       },
+      "/sub": {
+        target: apiTarget,
+      },
     };
     baseConfig.plugins = [
       ...(baseConfig.plugins ?? []),
@@ -238,7 +241,7 @@ export default defineConfig(({ mode }) => {
     ];
     baseConfig.server = {
       host: "127.0.0.1",
-      port: 5273,
+      port: 5473,
       strictPort: true,
       proxy,
     };

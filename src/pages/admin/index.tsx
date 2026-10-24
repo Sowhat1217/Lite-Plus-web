@@ -2547,7 +2547,7 @@ function GenerateCommandButton({ node, settings, initiallyOpen = false, onClose 
           dockerArgs.push(args[i]);
         }
         finalCommand =
-          `docker run -d --name lite-agent --restart=always ` +
+          `docker run -d --name lite-plus-agent --restart=always ` +
           `${LITE_AGENT_DOCKER_IMAGE} ` +
           quoteShellArgs(dockerArgs);
         break;
@@ -2985,7 +2985,7 @@ function GenerateCommandButton({ node, settings, initiallyOpen = false, onClose 
                 <TextField.Root
                   placeholder={t(
                     "admin.nodeTable.install_dir_placeholder",
-                    "安装目录，为空则使用默认目录(/opt/lite-agent)"
+                    "安装目录，为空则使用默认目录(/opt/lite-plus-agent)"
                   )}
                   value={installOptions.dir}
                   onChange={(e) =>
@@ -3029,7 +3029,7 @@ function GenerateCommandButton({ node, settings, initiallyOpen = false, onClose 
                 <TextField.Root
                   placeholder={t(
                     "admin.nodeTable.serviceName_placeholder",
-                    "服务名称，为空则使用默认名称(lite-agent)"
+                    "服务名称，为空则使用默认名称(lite-plus-agent)"
                   )}
                   value={installOptions.serviceName}
                   onChange={(e) =>
@@ -3395,7 +3395,7 @@ function GenerateCommandButton({ node, settings, initiallyOpen = false, onClose 
                   <Text size="1" color="gray">
                     {t(
                       "admin.nodeTable.monthRotateHint",
-                      "流量重置时间按厂商账单填写，轻量.Lite 会换算到北京时间才重置。",
+                      "流量重置时间按厂商账单填写，Lite-Plus 会换算到北京时间才重置。",
                     )}
                   </Text>
                 </Flex>
@@ -3922,7 +3922,7 @@ function EditButton({ node, initiallyOpen = false, onClose }: { node: NodeDetail
               <p className="text-sm leading-6 text-muted-foreground">
                 {t(
                   "admin.nodeEdit.trafficResetDay_description",
-                  "0 表示关闭；1-31 为每月重置日。流量重置时间按厂商账单填写，轻量.Lite 会换算到北京时间才重置。存量数据为北京时间 0:00。保存后同步到 Agent。",
+                  "0 表示关闭；1-31 为每月重置日。流量重置时间按厂商账单填写，Lite-Plus 会换算到北京时间才重置。存量数据为北京时间 0:00。保存后同步到 Agent。",
                 )}
               </p>
             </div>

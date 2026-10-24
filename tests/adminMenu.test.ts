@@ -60,6 +60,7 @@ test("keeps the admin navigation in the intended groups", () => {
       "/admin/billing",
       "/admin/notification/center",
       "/admin/monitoring",
+      "/admin/nodemgt",
       "/admin/remote-management",
       "/admin/notifications",
       "/admin/appearance",
@@ -103,6 +104,22 @@ test("keeps the admin navigation in the intended groups", () => {
       (item) => item.path === "/admin/notification/center",
     ),
     false,
+  );
+
+  const nodemgt = menuConfig.menu.find((item) => item.path === "/admin/nodemgt");
+  assert.deepEqual(
+    nodemgt?.children?.map((item) => item.path),
+    [
+      "/admin/nodemgt/overview",
+      "/admin/nodemgt/inbounds",
+      "/admin/nodemgt/outbounds",
+      "/admin/nodemgt/routes",
+      "/admin/nodemgt/users",
+      "/admin/nodemgt/plans",
+      "/admin/nodemgt/subscriptions",
+      "/admin/nodemgt/certificates",
+      "/admin/nodemgt/audit",
+    ],
   );
 
   const remoteManagement = menuConfig.menu.find(
@@ -181,6 +198,26 @@ test("keeps the monitoring group open across nested monitoring routes", () => {
       pathname,
     );
     assert.deepEqual(next, { "/admin/monitoring": true });
+    openSubMenus = next;
+  }
+});
+
+test("keeps the nodemgt group open across nested nodemgt routes", () => {
+  let openSubMenus = { "/admin/nodemgt": true };
+
+  for (const pathname of [
+    "/admin/nodemgt/overview",
+    "/admin/nodemgt/inbounds",
+    "/admin/nodemgt/outbounds",
+    "/admin/nodemgt/routes",
+    "/admin/nodemgt/users",
+    "/admin/nodemgt/plans",
+    "/admin/nodemgt/subscriptions",
+    "/admin/nodemgt/certificates",
+    "/admin/nodemgt/audit",
+  ]) {
+    const next = syncSubMenuForLocation(openSubMenus, menuConfig.menu, pathname);
+    assert.deepEqual(next, { "/admin/nodemgt": true });
     openSubMenus = next;
   }
 });

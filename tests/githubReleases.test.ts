@@ -13,16 +13,16 @@ import {
   writeGithubReleasesCache,
 } from "../src/utils/githubReleases.ts";
 
-test("github release checks stay on the public Lite repo and skip private fields", () => {
+test("github release checks stay on the public Lite-Plus repo and skip private fields", () => {
   assert.equal(
     GITHUB_RELEASES_URL,
-    "https://api.github.com/repos/nuomiiiii/Lite/releases?per_page=20",
+    "https://api.github.com/repos/nuomiiiii/Lite-Plus/releases?per_page=20",
   );
   assert.doesNotMatch(GITHUB_RELEASES_URL, /per_page=100/);
   const releases = sanitizeGithubReleases([
     {
       tag_name: "2.3.0",
-      html_url: "https://github.com/nuomiiiii/Lite/releases/tag/2.3.0",
+      html_url: "https://github.com/nuomiiiii/Lite-Plus/releases/tag/2.3.0",
       body: "ok",
       token: "secret",
     },
@@ -34,7 +34,7 @@ test("github release checks stay on the public Lite repo and skip private fields
   assert.deepEqual(releases, [
     {
       tag_name: "2.3.0",
-      html_url: "https://github.com/nuomiiiii/Lite/releases/tag/2.3.0",
+      html_url: "https://github.com/nuomiiiii/Lite-Plus/releases/tag/2.3.0",
       body: "ok",
     },
   ]);
@@ -53,7 +53,7 @@ test("cached github releases expire and ignore malformed payloads", () => {
     [
       {
         tag_name: "2.3.0",
-        html_url: "https://github.com/nuomiiiii/Lite/releases/tag/2.3.0",
+        html_url: "https://github.com/nuomiiiii/Lite-Plus/releases/tag/2.3.0",
       },
     ],
     1_000,

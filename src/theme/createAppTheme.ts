@@ -529,9 +529,10 @@ export function createAppTheme(mode: "light" | "dark") {
         },
         styleOverrides: {
           root: {
-            "& .MuiAutocomplete-popupIndicator": {
-              width: 30,
-              height: 30,
+            "& .MuiAutocomplete-popupIndicator, & .MuiAutocomplete-clearIndicator": {
+              width: 24,
+              height: 24,
+              padding: 0,
               borderRadius: 6,
               transition: "transform 180ms cubic-bezier(0.22, 1, 0.36, 1)",
             },

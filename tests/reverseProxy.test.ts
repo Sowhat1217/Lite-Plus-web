@@ -31,7 +31,7 @@ test("built-in HTTPS reads certificates only from server paths", () => {
   assert.doesNotMatch(page, /letsencrypt/i);
   assert.doesNotMatch(page, /type="file"/);
   assert.doesNotMatch(page, /uploadHTTPSCertificate/);
-  assert.match(page, /:36888/);
+  assert.match(page, /:37888/);
   assert.match(page, /https_listen: `:\$\{numericPort\}`/);
   assert.doesNotMatch(api, /\/api\/admin\/settings\/https\/upload/);
   assert.match(api, /\/api\/admin\/settings\/https\/reload/);

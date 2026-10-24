@@ -127,7 +127,9 @@ test("node detail overview keeps flag assets, spec icons, and HK preview values"
   assert.doesNotMatch(detailSource, /PREVIEW\.cores/);
   assert.doesNotMatch(detailSource, /PREVIEW\.ipv4/);
   assert.match(sidebarBrandSource, /data-testid="sidebar-brand"/);
+  assert.match(sidebarBrandSource, /data-testid="sidebar-brand-plus"/);
   assert.match(sidebarBrandSource, /viewBox="0 0 32 32"/);
+  assert.doesNotMatch(sidebarBrandSource, /LITE_NAME\.split/);
   assert.match(sidebarSource, /fontSize: 16/);
   assert.match(sidebarSource, /fontWeight: active \? 600 : 400/);
 });

@@ -23,10 +23,18 @@ test("idle warmup skips the current page and throttles 3g", () => {
     "/admin/billing",
     "/admin/ping",
     "/admin/return-route",
+    "/admin/nodemgt",
   ]);
   assert.deepEqual(getIdleAdminWarmupTargets("/admin/ping"), [
     "/admin/servers",
     "/admin/billing",
+    "/admin/return-route",
+    "/admin/nodemgt",
+  ]);
+  assert.deepEqual(getIdleAdminWarmupTargets("/admin/nodemgt/inbounds"), [
+    "/admin/servers",
+    "/admin/billing",
+    "/admin/ping",
     "/admin/return-route",
   ]);
   assert.deepEqual(

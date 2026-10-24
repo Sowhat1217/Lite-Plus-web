@@ -71,7 +71,7 @@ test("the version link is shared by the desktop and mobile sidebar", () => {
   assert.match(source, /strokeWidth=\{1\.5\}/);
   assert.match(
     source,
-    /github\.com\/nuomiiiii\/Lite\/releases\/tag\/\$\{encodeURIComponent\(currentVersion\)\}/,
+    /github\.com\/nuomiiiii\/Lite-Plus\/releases\/tag\/\$\{encodeURIComponent\(currentVersion\)\}/,
   );
   assert.match(source, /target="_blank"/);
   assert.match(source, /rel="noopener noreferrer"/);

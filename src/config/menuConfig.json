@@ -38,6 +38,58 @@
       ]
     },
     {
+      "labelKey": "navigation.nodemgt",
+      "path": "/admin/nodemgt",
+      "icon": "Hub",
+      "children": [
+        {
+          "labelKey": "nodemgt.tab_overview",
+          "path": "/admin/nodemgt/overview",
+          "icon": "LayoutDashboard"
+        },
+        {
+          "labelKey": "nodemgt.tab_inbounds",
+          "path": "/admin/nodemgt/inbounds",
+          "icon": "Hub"
+        },
+        {
+          "labelKey": "nodemgt.tab_outbounds",
+          "path": "/admin/nodemgt/outbounds",
+          "icon": "Send"
+        },
+        {
+          "labelKey": "nodemgt.tab_routes",
+          "path": "/admin/nodemgt/routes",
+          "icon": "Route"
+        },
+        {
+          "labelKey": "nodemgt.tab_users",
+          "path": "/admin/nodemgt/users",
+          "icon": "Users"
+        },
+        {
+          "labelKey": "nodemgt.tab_plans",
+          "path": "/admin/nodemgt/plans",
+          "icon": "Payments"
+        },
+        {
+          "labelKey": "nodemgt.tab_subscriptions",
+          "path": "/admin/nodemgt/subscriptions",
+          "icon": "FileText"
+        },
+        {
+          "labelKey": "nodemgt.tab_certs",
+          "path": "/admin/nodemgt/certificates",
+          "icon": "Globe"
+        },
+        {
+          "labelKey": "nodemgt.tab_audit",
+          "path": "/admin/nodemgt/audit",
+          "icon": "FileText"
+        }
+      ]
+    },
+    {
       "labelKey": "navigation.remote_management",
       "path": "/admin/remote-management",
       "icon": "Terminal",

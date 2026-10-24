@@ -21,6 +21,14 @@ test("alert center sits below the cost center in the admin menu", () => {
     paths.indexOf("/admin/notification/center"),
     paths.indexOf("/admin/billing") + 1,
   );
+  assert.equal(
+    paths.indexOf("/admin/monitoring"),
+    paths.indexOf("/admin/notification/center") + 1,
+  );
+  assert.equal(
+    paths.indexOf("/admin/nodemgt"),
+    paths.indexOf("/admin/monitoring") + 1,
+  );
   const notifications = menuConfig.menu.find(
     (item: { path: string; children?: { path: string }[] }) =>
       item.path === "/admin/notifications",

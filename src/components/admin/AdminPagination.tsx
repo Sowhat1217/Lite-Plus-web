@@ -120,6 +120,7 @@ export const AdminPagination = ({
   summary,
   showSummary = true,
   hideDivider = false,
+  showWhenEmpty = false,
 }: {
   page: number;
   total: number;
@@ -132,10 +133,11 @@ export const AdminPagination = ({
   summary?: React.ReactNode;
   showSummary?: boolean;
   hideDivider?: boolean;
+  showWhenEmpty?: boolean;
 }) => {
   const { t } = useTranslation();
   const [pageSizeAnchor, setPageSizeAnchor] = React.useState<HTMLElement | null>(null);
-  if (total === 0) return null;
+  if (total === 0 && !showWhenEmpty) return null;
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const currentPage = Math.min(Math.max(page, 1), totalPages);

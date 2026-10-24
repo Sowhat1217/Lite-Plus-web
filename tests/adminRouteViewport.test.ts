@@ -193,6 +193,39 @@ test("query and hash updates keep the current admin route view mounted", () => {
   );
 });
 
+test("node management tabs keep one mounted admin view", () => {
+  const overview = getAdminRouteViewKey({
+    pathname: "/admin/nodemgt",
+    search: "",
+    hash: "",
+  });
+  assert.equal(overview, "/admin/nodemgt");
+  assert.equal(
+    getAdminRouteViewKey({
+      pathname: "/admin/nodemgt/inbounds",
+      search: "",
+      hash: "",
+    }),
+    overview,
+  );
+  assert.equal(
+    getAdminRouteViewKey({
+      pathname: "/admin/nodemgt/subscriptions",
+      search: "?q=probe",
+      hash: "",
+    }),
+    overview,
+  );
+  assert.equal(
+    getAdminRouteViewKey({
+      pathname: "/admin/plus/users",
+      search: "",
+      hash: "",
+    }),
+    overview,
+  );
+});
+
 test("legacy theme admin dashboard uses the same admin home view", () => {
   assert.equal(
     getAdminRouteViewKey({

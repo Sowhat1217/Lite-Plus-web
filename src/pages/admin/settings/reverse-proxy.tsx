@@ -131,7 +131,7 @@ export default function ReverseProxySettings() {
 
 const emptyHTTPSSettings: HTTPSSettings = {
   https_enabled: false,
-  https_listen: ":36888",
+  https_listen: ":37888",
   https_redirect_http: false,
   https_certificate_path: "./data/tls/server.crt",
   https_private_key_path: "./data/tls/server.key",
@@ -146,13 +146,13 @@ const emptyHTTPSStatus: HTTPSStatus = {
   listener_ipv4_available: true,
   listener_ipv6_available: true,
   listener_probe_done: true,
-  listen: ":36888",
+  listen: ":37888",
   domains: [],
 };
 
 function extractListenPort(listen: string): string {
   const match = listen.trim().match(/:(\d+)$/);
-  return match?.[1] ?? "36888";
+  return match?.[1] ?? "37888";
 }
 
 function HTTPSPanel({ onReady }: { onReady: () => void }) {
@@ -160,7 +160,7 @@ function HTTPSPanel({ onReady }: { onReady: () => void }) {
   const snapshot = getHTTPSSettingsSnapshot();
   const [settings, setSettings] = React.useState(snapshot?.settings ?? emptyHTTPSSettings);
   const [status, setStatus] = React.useState(snapshot?.status ?? emptyHTTPSStatus);
-  const [port, setPort] = React.useState(() => extractListenPort(snapshot?.settings.https_listen ?? "36888"));
+  const [port, setPort] = React.useState(() => extractListenPort(snapshot?.settings.https_listen ?? "37888"));
   const [loading, setLoading] = React.useState(() => snapshot === null);
   const [saving, setSaving] = React.useState(false);
   const [reloading, setReloading] = React.useState(false);
@@ -389,7 +389,7 @@ function HTTPSPanel({ onReady }: { onReady: () => void }) {
         title={t("settings.reverse_proxy.enable_https", "Enable built-in HTTPS")}
         description={t(
           "settings.reverse_proxy.enable_https_description",
-          "When enabled, 轻量.Lite provides HTTPS access for both the web UI and Agent APIs.",
+          "When enabled, Lite-Plus provides HTTPS access for both the web UI and Agent APIs.",
         )}
       >
         <SettingCard.Action>
@@ -448,7 +448,7 @@ function HTTPSPanel({ onReady }: { onReady: () => void }) {
         title={t("settings.reverse_proxy.certificate_paths", "Certificate paths")}
         description={t(
           "settings.reverse_proxy.certificate_paths_description",
-          "轻量.Lite reads the certificate and private key from the server. Docker users should mount the certificate directory first and enter its path inside the container.",
+          "Lite-Plus reads the certificate and private key from the server. Docker users should mount the certificate directory first and enter its path inside the container.",
         )}
         direction="column"
       >
@@ -702,7 +702,7 @@ function CloudflareTunnelPanel({ onReady }: { onReady: () => void }) {
             <Text size="2" color="gray">
               {t(
                 "settings.reverse_proxy.env_token_hint",
-                "Environment variable `KOMARI_CLOUDFLARED_TOKEN` is present. 轻量.Lite will try to restore cloudflared automatically on restart."
+                "Environment variable `KOMARI_CLOUDFLARED_TOKEN` is present. Lite-Plus will try to restore cloudflared automatically on restart."
               )}
             </Text>
           ) : null}
@@ -917,7 +917,7 @@ function CloudflareTunnelPanel({ onReady }: { onReady: () => void }) {
           <Dialog.Description>
             {t(
               "settings.reverse_proxy.stop_dialog_description",
-              "If you are currently accessing 轻量.Lite through this tunnel, stopping cloudflared may immediately disconnect your session."
+              "If you are currently accessing Lite-Plus through this tunnel, stopping cloudflared may immediately disconnect your session."
             )}
           </Dialog.Description>
 

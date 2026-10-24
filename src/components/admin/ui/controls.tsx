@@ -253,16 +253,19 @@ export const Badge = ({
   variant = "soft",
   className,
   children,
+  title,
 }: {
   color?: string;
   variant?: Variant;
   size?: SpaceValue;
   className?: string;
   children?: ReactNode;
+  title?: string;
 }) => (
   <Chip
     className={className}
     size="small"
+    title={title}
     color={chipColor(color)}
     variant={variant === "outline" || variant === "outlined" || variant === "surface" ? "outlined" : "filled"}
     label={children}

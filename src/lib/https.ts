@@ -34,7 +34,7 @@ export interface HTTPSPayload {
 
 const defaultSettings: HTTPSSettings = {
   https_enabled: false,
-  https_listen: ":36888",
+  https_listen: ":37888",
   https_redirect_http: false,
   https_certificate_path: "./data/tls/server.crt",
   https_private_key_path: "./data/tls/server.key",
@@ -49,7 +49,7 @@ const defaultStatus: HTTPSStatus = {
   listener_ipv4_available: true,
   listener_ipv6_available: true,
   listener_probe_done: true,
-  listen: ":36888",
+  listen: ":37888",
   domains: [],
 };
 

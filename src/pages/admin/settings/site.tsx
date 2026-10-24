@@ -1111,7 +1111,7 @@ function FaviconPanel({
           <Typography sx={{ fontSize: 12, lineHeight: 1.8, color: "text.secondary", textAlign: "center" }}>
             {t(
               "settings.site.reset_favicon_hint",
-              "当前自定义图标将被替换为 轻量.Lite 默认图标。之后可以重新上传。",
+              "当前自定义图标将被替换为 Lite-Plus 默认图标。之后可以重新上传。",
             )}
           </Typography>
         </Stack>

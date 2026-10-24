@@ -6,23 +6,17 @@ const storageSource = readFileSync(
   new URL("../src/pages/admin/update_storage_v4.tsx", import.meta.url),
   "utf8",
 );
-const legacySource = readFileSync(
-  new URL("../src/pages/admin/update_1_2_7.tsx", import.meta.url),
-  "utf8",
-);
 const shellSource = readFileSync(
   new URL("../src/components/install/MigrationGuideShell.tsx", import.meta.url),
   "utf8",
 );
 
-test("migration pages use the shared MUI guide shell with progress", () => {
-  for (const source of [storageSource, legacySource]) {
-    assert.match(source, /<MigrationGuideShell/);
-    assert.match(source, /progress=\{progress\}/);
-    assert.doesNotMatch(source, /GuideHeader/);
-    assert.doesNotMatch(source, /@radix-ui\/themes/);
-    assert.doesNotMatch(source, /from "@\/components\/admin\/ui"/);
-  }
+test("storage migration page uses the shared MUI guide shell with progress", () => {
+  assert.match(storageSource, /<MigrationGuideShell/);
+  assert.match(storageSource, /progress=\{progress\}/);
+  assert.doesNotMatch(storageSource, /GuideHeader/);
+  assert.doesNotMatch(storageSource, /@radix-ui\/themes/);
+  assert.doesNotMatch(storageSource, /from "@\/components\/admin\/ui"/);
   assert.match(shellSource, /data-testid="migration-guide"/);
   assert.match(shellSource, /LinearProgress/);
   assert.match(shellSource, /LanguageMenu/);
@@ -36,23 +30,12 @@ test("migration pages use the shared MUI guide shell with progress", () => {
   );
 });
 
-test("migration pages do not overlay a login dialog", () => {
-  for (const source of [storageSource, legacySource]) {
-    assert.doesNotMatch(source, /RestrictedLoginDialog/);
-    assert.doesNotMatch(source, /logged_in/);
-  }
+test("storage migration page does not overlay a login dialog", () => {
+  assert.doesNotMatch(storageSource, /RestrictedLoginDialog/);
+  assert.doesNotMatch(storageSource, /logged_in/);
 });
 
-test("1.2.7 upgrade keeps driver choice, cleanup, and start confirmation", () => {
-  assert.match(legacySource, /ToggleButtonGroup/);
-  assert.match(legacySource, /<Dialog/);
-  assert.match(legacySource, /confirm_sqlite_risk/);
-  assert.match(legacySource, /datetime-local/);
-});
-
-test("migration pages support URL preview without calling the real APIs", () => {
-  for (const source of [storageSource, legacySource]) {
-    assert.match(source, /isGuidePreview/);
-    assert.match(source, /if \(preview\) return/);
-  }
+test("storage migration page supports URL preview without calling the real APIs", () => {
+  assert.match(storageSource, /isGuidePreview/);
+  assert.match(storageSource, /if \(preview\) return/);
 });

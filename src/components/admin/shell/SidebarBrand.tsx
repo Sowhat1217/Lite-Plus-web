@@ -2,8 +2,6 @@ import Box from "@mui/material/Box";
 
 import { LITE_BLUE, LITE_NAME } from "@/theme/brand";
 
-const [, wordmark] = LITE_NAME.split(".");
-
 export default function SidebarBrand({
   mini,
   compact,
@@ -69,15 +67,34 @@ export default function SidebarBrand({
         >
           <Box
             component="span"
+            data-testid="sidebar-brand-wordmark"
             sx={{
+              position: "relative",
+              display: "inline-block",
               color: LITE_BLUE,
               fontSize: compact ? 22 : 24,
               fontWeight: 650,
               lineHeight: 1.05,
               letterSpacing: "-0.6px",
+              paddingRight: "0.46em",
             }}
           >
-            {wordmark}
+            Lite
+            <Box
+              component="span"
+              data-testid="sidebar-brand-plus"
+              sx={{
+                position: "absolute",
+                top: "-0.14em",
+                right: 0,
+                fontSize: "0.5em",
+                fontWeight: 700,
+                lineHeight: 1,
+                letterSpacing: 0,
+              }}
+            >
+              +
+            </Box>
           </Box>
           <Box
             component="span"

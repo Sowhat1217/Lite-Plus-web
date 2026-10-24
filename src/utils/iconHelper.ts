@@ -25,6 +25,7 @@ import SettingsOutlined from "@mui/icons-material/SettingsOutlined";
 import ShowChartOutlined from "@mui/icons-material/ShowChartOutlined";
 import SpeedOutlined from "@mui/icons-material/SpeedOutlined";
 import StorageOutlined from "@mui/icons-material/StorageOutlined";
+import SendOutlined from "@mui/icons-material/SendOutlined";
 import ScheduleOutlined from "@mui/icons-material/ScheduleOutlined";
 import StorefrontOutlined from "@mui/icons-material/StorefrontOutlined";
 import TerminalOutlined from "@mui/icons-material/TerminalOutlined";
@@ -87,4 +88,5 @@ export const iconMap: Record<string, ReturnType<typeof wrapMuiIcon>> = {
   Route: wrapMuiIcon(AltRouteOutlined),
   LayoutDashboard: wrapMuiIcon(DashboardOutlined),
   Payments: wrapMuiIcon(AccountBalanceWalletOutlined),
+  Send: wrapMuiIcon(SendOutlined),
 };

@@ -25,6 +25,7 @@ test("admin warmup respects reduced-data connections", () => {
       "/admin/billing",
       "/admin/ping",
       "/admin/return-route",
+      "/admin/nodemgt",
     ],
   );
   assert.doesNotMatch(likelyRoutesSource, /\/admin\/notification\/load/);
