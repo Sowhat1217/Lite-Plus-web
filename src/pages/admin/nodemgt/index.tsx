@@ -72,7 +72,9 @@ import {
   type NodemgtSnapshot,
 } from "./prefetch";
 import { visibleChipCount } from "./overflowChips";
-import { parsePreviewLinks, previewCopyText, SubPreviewBody, type SubPreview } from "./subPreview";
+import { previewCopyText, SubPreviewBody, type SubPreview } from "./subPreview";
+import { parsePreviewLinks, TEMPLATE_CLIENTS, subscriptionTargetURL } from "./subscriptionClients";
+import SubscriptionTemplates from "./subscriptionTemplates";
 
 type TabKey =
   | "overview"
@@ -83,6 +85,7 @@ type TabKey =
   | "plans"
   | "certs"
   | "subscriptions"
+  | "templates"
   | "audit";
 
 type SheetKind = "inbound" | "user" | "plan" | "cert" | "subscription" | "outbound" | "route";
@@ -101,6 +104,7 @@ const NODE_TABS: Record<string, TabKey> = {
   "/certificates": "certs",
   "/certs": "certs",
   "/subscriptions": "subscriptions",
+  "/templates": "templates",
   "/audit": "audit",
   "/diag": "overview",
 };
@@ -115,7 +119,7 @@ const PROTOCOLS = ["vless", "vmess", "trojan", "shadowsocks", "hysteria2", "tuic
 const STACKS = ["ipv4", "ipv6", "dual"] as const;
 const FLOWS = ["", "xtls-rprx-vision", "xtls-rprx-vision-udp443"] as const;
 const CORES = ["xray", "sing-box"] as const;
-const SUB_FORMATS = ["xray", "clash", "sing-box", "base64"] as const;
+const SUB_FORMATS = ["xray", "clash", "sing-box", "base64", "mihomo", "loon", "surge", "surge-mac", "stash"] as const;
 const FINGERPRINTS = ["edge", "chrome", "firefox", "safari", "ios", "qq", "random"] as const;
 const DEFAULT_FINGERPRINT = "edge";
 const REALITY_DESTS = [
@@ -205,7 +209,8 @@ function mergeById(rows: any[], row: any) {
 
 function userViewFromUpsert(raw: any) {
   if (!raw || typeof raw !== "object") return null;
-  const { secret: _secret, ...view } = raw;
+  const view = { ...raw };
+  delete view.secret;
   return str(view.id) ? view : null;
 }
 
@@ -515,6 +520,7 @@ function subscriptionForm(row?: any): FormMap {
     id: str(row?.id),
     user_id: str(row?.user_id),
     format: str(row?.format, "xray"),
+    auto_detect: row?.auto_detect === true || row?.auto_detect === "true" ? "true" : "false",
     extra_urls: str(row?.extra_urls),
     token: str(row?.token),
     path: str(row?.path),
@@ -668,6 +674,7 @@ function subscriptionUpsertBody(form: FormMap) {
     id: form.id || undefined,
     user_id: form.user_id,
     format: form.format,
+    auto_detect: form.auto_detect === "true",
     extra_urls: form.extra_urls,
     enabled: form.enabled !== "false",
   };
@@ -2429,20 +2436,25 @@ export default function PlusAdminPage() {
     }
   };
 
-  const previewSub = async (id: string) => {
+  const previewSub = async (id: string, target = "") => {
     try {
       const row = subs.find((item) => item.id === id || item.user_id === id);
       if (!row) {
         toast.error(t("nodemgt.empty"));
         return;
       }
-      const data = await call("admin:nodemgt.subscription.preview", { id: row.id, format: row.format });
+      const data = await call("admin:nodemgt.subscription.preview", { id: row.id, target: target || undefined });
       const user = users.find((item) => item.id === row.user_id);
       const name = str(user?.display_name) || str(user?.username) || str(row.user_id);
       setPreview({
+        subscriptionID: row.id,
+        target,
         name,
-        url: str(data?.url) || subURL(row),
-        links: parsePreviewLinks(str(data?.body)),
+        url: subscriptionTargetURL(str(data?.url) || subURL(row), target),
+        links: data?.client === "v2ray" ? parsePreviewLinks(str(data?.body)) : [],
+        body: str(data?.body),
+        client: str(data?.client),
+        warnings: Array.isArray(data?.warnings) ? data.warnings : [],
       });
     } catch (err) {
       toast.error(nodemgtErrorMessage(err, t));
@@ -2461,6 +2473,14 @@ export default function PlusAdminPage() {
   const sheetTitle = sheet
     ? t(sheet.form.id ? "nodemgt.edit" : "nodemgt.create") + " · " + t(`nodemgt.kind_${sheet.kind}`)
     : "";
+
+  if (tab === "templates") {
+    return (
+      <div className="flex flex-col gap-4 p-0 md:p-4" data-testid="nodemgt-templates-page">
+        <SubscriptionTemplates subs={subs} plans={plans} />
+      </div>
+    );
+  }
 
   return (
     <div
@@ -2878,7 +2898,7 @@ export default function PlusAdminPage() {
               rows={listPager.pageItems}
               columns={[
                 { key: "user", label: t("nodemgt.col_user_id"), render: (row) => row.username || userOptions.find((item) => item.value === row.user_id)?.label || row.user_id },
-                { key: "format", label: t("nodemgt.col_format"), render: (row) => displayCore(row.format) },
+                { key: "format", label: t("nodemgt.col_format"), render: (row) => row.auto_detect ? t("nodemgt.tpl_auto") : displayCore(row.format) },
                 { key: "url", label: t("nodemgt.col_sub_url"), render: (row) => subURL(row) || "—" },
                 { key: "enabled", label: t("nodemgt.col_enabled"), render: (row) => <EnableSwitch checked={row.enabled !== false} onChange={(next) => void toggleRowEnabled("subscription", row, next)} /> },
                 {
@@ -3525,6 +3545,7 @@ export default function PlusAdminPage() {
           <SheetPane>
             <SelectField label={t("nodemgt.col_user_id")} value={sheet.form.user_id} onChange={(value) => setForm({ user_id: value })} options={userOptions.length ? userOptions : [{ value: "", label: t("nodemgt.empty") }]} searchable />
             <SelectField label={t("nodemgt.col_format")} value={sheet.form.format} onChange={(value) => setForm({ format: value })} options={SUB_FORMATS.map((value) => ({ value, label: displayCore(value) }))} />
+            <SheetSwitch title={t("nodemgt.tpl_auto")} description={t("nodemgt.tpl_auto_help")} checked={sheet.form.auto_detect === "true"} onChange={(next) => setForm({ auto_detect: next ? "true" : "false" })} />
             {sheet.form.id ? (
               <Field
                 label={t("nodemgt.col_sub_url")}
@@ -3847,7 +3868,13 @@ export default function PlusAdminPage() {
           />
         }
       >
-        {preview ? <SubPreviewBody preview={preview} /> : null}
+        {preview ? <Stack spacing={2}>
+          <TextField select size="small" label={t("nodemgt.tpl_client")} value={preview.target || ""} onChange={(event) => void previewSub(preview.subscriptionID || "", event.target.value)}>
+            <MenuItem value="">{t("nodemgt.tpl_default")}</MenuItem>
+            {[...TEMPLATE_CLIENTS, "v2ray"].map((value) => <MenuItem key={value} value={value}>{value}</MenuItem>)}
+          </TextField>
+          <SubPreviewBody preview={preview} />
+        </Stack> : null}
       </SettingsSheetDialog>
 
       <SettingsSheetDialog

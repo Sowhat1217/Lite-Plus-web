@@ -52,6 +52,7 @@ const NODEMGT_ADMIN_SEGMENTS = [
   "certificates",
   "certs",
   "subscriptions",
+  "templates",
   "audit",
   "diag",
 ] as const;

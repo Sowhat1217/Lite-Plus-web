@@ -117,6 +117,7 @@ test("keeps the admin navigation in the intended groups", () => {
       "/admin/nodemgt/users",
       "/admin/nodemgt/plans",
       "/admin/nodemgt/subscriptions",
+      "/admin/nodemgt/templates",
       "/admin/nodemgt/certificates",
       "/admin/nodemgt/audit",
     ],
@@ -213,6 +214,7 @@ test("keeps the nodemgt group open across nested nodemgt routes", () => {
     "/admin/nodemgt/users",
     "/admin/nodemgt/plans",
     "/admin/nodemgt/subscriptions",
+    "/admin/nodemgt/templates",
     "/admin/nodemgt/certificates",
     "/admin/nodemgt/audit",
   ]) {

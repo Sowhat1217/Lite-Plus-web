@@ -1,4 +1,6 @@
 import Accordion from "@mui/material/Accordion";
+import Alert from "@mui/material/Alert";
+import Button from "@mui/material/Button";
 import AccordionDetails from "@mui/material/AccordionDetails";
 import AccordionSummary from "@mui/material/AccordionSummary";
 import Box from "@mui/material/Box";
@@ -17,6 +19,11 @@ export type SubPreview = {
   name: string;
   url: string;
   links: string[];
+  subscriptionID?: string;
+  target?: string;
+  body?: string;
+  client?: string;
+  warnings?: string[];
 };
 
 function copyValue(value: string, ok: string) {
@@ -248,6 +255,13 @@ export function SubPreviewBody({ preview }: { preview: SubPreview }) {
   }
 
   return (
+    <Stack spacing={1.5}>
+      {preview.warnings?.map((warning, index) => <Alert key={index} severity="warning">{warning}</Alert>)}
+      {preview.body ? <>
+        <Typography variant="subtitle2">{preview.client} · {t("nodemgt.tpl_config")}</Typography>
+        <Box component="pre" sx={{ m: 0, p: 1.5, maxHeight: 360, overflow: "auto", fontSize: 12, bgcolor: "action.hover", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{preview.body}</Box>
+        <Button onClick={() => copyValue(preview.body || "", t("nodemgt.copied"))}>{t("nodemgt.tpl_copy_config")}</Button>
+      </> : null}
     <Box sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1, overflow: "hidden" }}>
       {items.map((item, index) => (
         <Accordion
@@ -286,17 +300,11 @@ export function SubPreviewBody({ preview }: { preview: SubPreview }) {
         </Accordion>
       ))}
     </Box>
+    </Stack>
   );
 }
 
 export function previewCopyText(preview: SubPreview) {
   if (preview.url) return preview.url;
   return preview.links.join("\n");
-}
-
-export function parsePreviewLinks(body: string) {
-  return body
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line.includes("://"));
 }
