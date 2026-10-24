@@ -1,6 +1,5 @@
 import Accordion from "@mui/material/Accordion";
 import Alert from "@mui/material/Alert";
-import Button from "@mui/material/Button";
 import AccordionDetails from "@mui/material/AccordionDetails";
 import AccordionSummary from "@mui/material/AccordionSummary";
 import Box from "@mui/material/Box";
@@ -13,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import QRCode from "qrcode";
 import { toast } from "sonner";
 import { ArrowDown, Copy, Image } from "@/components/admin/muiIcons";
+import { nodemgtWarningMessage } from "./inboundToOutbound";
 import { parseShareLink } from "./shareLink";
 
 export type SubPreview = {
@@ -256,12 +256,7 @@ export function SubPreviewBody({ preview }: { preview: SubPreview }) {
 
   return (
     <Stack spacing={1.5}>
-      {preview.warnings?.map((warning, index) => <Alert key={index} severity="warning">{warning}</Alert>)}
-      {preview.body ? <>
-        <Typography variant="subtitle2">{preview.client} · {t("nodemgt.tpl_config")}</Typography>
-        <Box component="pre" sx={{ m: 0, p: 1.5, maxHeight: 360, overflow: "auto", fontSize: 12, bgcolor: "action.hover", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{preview.body}</Box>
-        <Button onClick={() => copyValue(preview.body || "", t("nodemgt.copied"))}>{t("nodemgt.tpl_copy_config")}</Button>
-      </> : null}
+      {preview.warnings?.map((warning, index) => <Alert key={index} severity="warning">{nodemgtWarningMessage(warning, t)}</Alert>)}
     <Box sx={{ border: "1px solid", borderColor: "divider", borderRadius: 1, overflow: "hidden" }}>
       {items.map((item, index) => (
         <Accordion

@@ -22,6 +22,8 @@ test("prefetch does not cache a failed RPC batch as a fresh snapshot", () => {
   assert.match(prefetchSource, /if \(error\) throw error/);
   assert.match(prefetchSource, /throwPrimaryRPCErrors\(options\?\.primary, batch\.errors\)/);
   assert.doesNotMatch(prefetchSource, /return rememberNodemgtSnapshot\(next, true\)/);
+  assert.match(prefetchSource, /admin:nodemgt\.template\.list/);
+  assert.match(prefetchSource, /asTemplateList/);
   assert.doesNotMatch(prefetchSource, /return await pending/);
 });
 
@@ -109,7 +111,7 @@ test("prefetch throws later caller's primary errors on a shared in-flight batch"
   assert.equal(usersResult.rejected, false);
   assert.equal(certsResult.rejected, true);
   assert.match(String(certsResult.error), /admin:nodemgt\.cert\.list/);
-  assert.equal(requests.length, 11);
+  assert.equal(requests.length, 12);
   assert.equal(api.getNodemgtSnapshot()?.at > 0, false);
 });
 
@@ -137,7 +139,7 @@ test("reload waits for the in-flight batch then fetches again", async () => {
   const [firstResult, reloadResult] = await Promise.all([first, reload]);
   assert.equal(firstResult.rejected, false);
   assert.equal(reloadResult.rejected, false);
-  assert.equal(requests.length, 22);
+  assert.equal(requests.length, 24);
 });
 
 test("prefetch retries a transient Failed to fetch on the primary list", async () => {

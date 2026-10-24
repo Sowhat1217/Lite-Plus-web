@@ -16,7 +16,7 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import AdminPageTitle from "@/components/admin/AdminPageTitle";
 import {
   AdminPagination,
@@ -33,7 +33,9 @@ import SettingsSheetDialog, {
   SettingsSheetActions,
 } from "@/components/admin/SettingsSheetDialog";
 import { SettingsAlert, settingsFieldSx } from "@/components/admin/SettingsChrome";
-import { Badge } from "@/components/admin/ui";
+import { SettingCardSwitch } from "@/components/admin/SettingCard";
+import { AdminSheetTabs, AdminTabLabel } from "@/components/admin/AdminSheetTabs";
+import { Badge, Tabs as SubPageTabs } from "@/components/admin/ui";
 import {
   Activity,
   ArrowDown,
@@ -41,6 +43,10 @@ import {
   Clock3,
   Copy,
   Cpu,
+  Globe,
+  Layers3,
+  LinkIcon,
+  LockKeyhole,
   Network,
   Pencil,
   Shield,
@@ -65,11 +71,14 @@ import { toast } from "sonner";
 import { displayExpiryInput, moveAdjacentIDs, nodemgtErrorMessage, normalizeExpiryInput, outboundFieldsFromInbound, outboundTagConflict, outboundTagFromInbound, randomInboundPort, randomRealityShortID, uuidForInbound } from "./inboundToOutbound";
 import { parseShareLink } from "./shareLink";
 import {
+  emptyNodemgtTemplates,
   getNodemgtSnapshot,
+  hasNodemgtTemplates,
   nodemgtPrimaryMethods,
   patchNodemgtSnapshot,
   prefetchNodemgtAdmin,
   type NodemgtSnapshot,
+  type NodemgtTemplateList,
 } from "./prefetch";
 import { visibleChipCount } from "./overflowChips";
 import { previewCopyText, SubPreviewBody, type SubPreview } from "./subPreview";
@@ -85,7 +94,6 @@ type TabKey =
   | "plans"
   | "certs"
   | "subscriptions"
-  | "templates"
   | "audit";
 
 type SheetKind = "inbound" | "user" | "plan" | "cert" | "subscription" | "outbound" | "route";
@@ -104,7 +112,7 @@ const NODE_TABS: Record<string, TabKey> = {
   "/certificates": "certs",
   "/certs": "certs",
   "/subscriptions": "subscriptions",
-  "/templates": "templates",
+  "/templates": "subscriptions",
   "/audit": "audit",
   "/diag": "overview",
 };
@@ -249,15 +257,34 @@ const emptySubCfg = {
   sub_public_port: "",
   sub_path: "",
   sub_public_host: "",
+  sub_reuse_https: false,
 };
 
+function settingOn(value: unknown) {
+  if (value === true || value === 1) return true;
+  const raw = String(value ?? "").trim().toLowerCase();
+  return raw === "1" || raw === "true" || raw === "yes" || raw === "on";
+}
+
 function subCfgFromSettings(settingRow?: Record<string, any> | null) {
+  const reuse = settingOn(settingRow?.sub_reuse_https);
+  const domain = str(settingRow?.sub_domain, "") || firstShareDomain(settingRow?.https_domains);
   return {
     sub_listen_port: str(settingRow?.sub_listen_port, ""),
     sub_public_port: Number(settingRow?.sub_public_port || 0) > 0 ? str(settingRow?.sub_public_port) : "",
     sub_path: str(settingRow?.sub_path, ""),
-    sub_public_host: str(settingRow?.sub_public_host, ""),
+    sub_public_host: reuse && domain ? domain : str(settingRow?.sub_public_host, ""),
+    sub_reuse_https: reuse,
   };
+}
+
+function firstShareDomain(value: unknown) {
+  const names = Array.isArray(value) ? value.map((item) => str(item).trim()).filter(Boolean) : [];
+  return (
+    names.find((name) => !name.startsWith("*.") && name.toLowerCase() !== "localhost") ||
+    names.find((name) => name.startsWith("*."))?.replace(/^\*\./, "") ||
+    ""
+  );
 }
 
 function defaultCore(protocol: string) {
@@ -501,6 +528,37 @@ function planForm(row?: any): FormMap {
 
 function isFileCert(row?: any) {
   return str(row?.source) === "file" || Boolean(str(row?.cert_path));
+}
+
+function formatCertIssuer(raw: string) {
+  const value = str(raw).trim();
+  if (!value || value === "file") return "";
+  if (/lets[\s-]?encrypt/i.test(value)) return "Let's Encrypt";
+  return value;
+}
+
+function displayCertIssuer(row: any, fileLabel: string, acmeLabel: string) {
+  const issuer = formatCertIssuer(str(row?.issuer));
+  const source = isFileCert(row) ? fileLabel : acmeLabel;
+  return issuer ? `${source} · ${issuer}` : source;
+}
+
+function CellClamp({ value, maxWidth = 280 }: { value: string; maxWidth?: number }) {
+  if (!value || value === "—") return <>{"—"}</>;
+  return (
+    <Box
+      title={value}
+      sx={{
+        maxWidth,
+        minWidth: 0,
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {value}
+    </Box>
+  );
 }
 
 function certForm(row?: any): FormMap {
@@ -808,6 +866,7 @@ function Field({
   autoComplete,
   ignorePasswordManager = false,
   multiline = false,
+  required = false,
   endAdornment,
 }: {
   label: string;
@@ -820,6 +879,7 @@ function Field({
   autoComplete?: string;
   ignorePasswordManager?: boolean;
   multiline?: boolean;
+  required?: boolean;
   endAdornment?: ReactNode;
 }) {
   const ignoreFill = ignorePasswordManager || autoComplete === "off";
@@ -836,6 +896,7 @@ function Field({
       minRows={multiline ? 3 : undefined}
       lang={dateTime ? "en-CA" : undefined}
       label={label}
+      required={required}
       helperText={helper}
       placeholder={placeholder}
       value={value}
@@ -957,25 +1018,23 @@ function SheetSwitch({
   onChange: (next: boolean) => void;
 }) {
   return (
-    <Box
-      data-sheet-switch=""
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: 2,
-        py: 0.5,
-      }}
-    >
-      <Box sx={{ minWidth: 0 }}>
-        <Typography sx={{ fontSize: 14, fontWeight: 600 }}>{title}</Typography>
-        {description ? (
-          <Typography color="text.secondary" sx={{ fontSize: 12, lineHeight: 1.6, mt: 0.25 }}>
-            {description}
-          </Typography>
-        ) : null}
+    <Box data-sheet-switch="" sx={{ minWidth: 0 }}>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 2,
+        }}
+      >
+        <Typography sx={{ fontSize: 14, fontWeight: 600, minWidth: 0 }}>{title}</Typography>
+        <Switch checked={checked} onChange={(_, next) => onChange(next)} sx={{ flexShrink: 0 }} />
       </Box>
-      <Switch checked={checked} onChange={(_, next) => onChange(next)} />
+      {description ? (
+        <Typography color="text.secondary" sx={{ fontSize: 12, lineHeight: 1.6, mt: 0.25 }}>
+          {description}
+        </Typography>
+      ) : null}
     </Box>
   );
 }
@@ -1768,6 +1827,7 @@ export default function PlusAdminPage() {
   const { t } = useTranslation();
   const { call } = useRPC2Call();
   const location = useLocation();
+  const navigate = useNavigate();
   const { nodeDetail } = useNodeDetails();
   const tab = PATH_TAB[location.pathname] || "overview";
   const tabRef = useRef(tab);
@@ -1785,12 +1845,16 @@ export default function PlusAdminPage() {
   const [diag, setDiag] = useState<any>(() => cached?.diag ?? {});
   const [delivery, setDelivery] = useState<any[]>(() => cached?.delivery ?? []);
   const [settings, setSettings] = useState<any>(() => cached?.settings ?? {});
+  const [templates, setTemplates] = useState<NodemgtTemplateList>(() => cached?.templates ?? emptyNodemgtTemplates());
   const [issuer, setIssuer] = useState({
     cf_api_token: "",
-    cf_zone_id: str(cached?.settings?.cf_zone_id),
     acme_email: str(cached?.settings?.acme_email),
   });
   const [subCfg, setSubCfg] = useState(() => cached?.settings ? subCfgFromSettings(cached.settings) : emptySubCfg);
+  const [subPage, setSubPage] = useState<"list" | "access" | "templates">(
+    location.pathname.endsWith("/templates") ? "templates" : "list",
+  );
+  const [certPage, setCertPage] = useState<"list" | "issuer">("list");
   const [loading, setLoading] = useState(() => !cached);
   const firstLoad = useRef(!cached);
   const [search, setSearch] = useState("");
@@ -1826,9 +1890,9 @@ export default function PlusAdminPage() {
     setDiag(snap.diag);
     setDelivery(snap.delivery);
     setSettings(snap.settings);
+    setTemplates(snap.templates);
     setIssuer((current) => ({
       ...current,
-      cf_zone_id: str(snap.settings?.cf_zone_id, current.cf_zone_id),
       acme_email: str(snap.settings?.acme_email, current.acme_email),
     }));
     setSubCfg(subCfgFromSettings(snap.settings));
@@ -1909,6 +1973,12 @@ export default function PlusAdminPage() {
   useEffect(() => {
     void load({ force: !getNodemgtSnapshot() });
   }, [load]);
+
+  useEffect(() => {
+    if (!location.pathname.endsWith("/templates")) return;
+    setSubPage("templates");
+    navigate(location.pathname.replace(/\/templates$/, "/subscriptions"), { replace: true });
+  }, [location.pathname, navigate]);
 
   useEffect(() => {
     if (!ipLog?.id) return;
@@ -2171,11 +2241,29 @@ export default function PlusAdminPage() {
     setImportLink("");
   };
 
+  const clearIssuer = async () => {
+    try {
+      const next = await call("admin:nodemgt.settings.set", { clear_issuer: true });
+      setSettings(next);
+      setIssuer({ cf_api_token: "", acme_email: "" });
+      toast.success(t("nodemgt.issuer_cleared"));
+    } catch (err) {
+      toast.error(nodemgtErrorMessage(err, t));
+    }
+  };
+
   const saveIssuer = async () => {
+    if (!issuer.cf_api_token.trim() && !settings.cf_api_token_set) {
+      toast.error(t("nodemgt.cf_token_required"));
+      return;
+    }
+    if (!issuer.acme_email.trim()) {
+      toast.error(t("nodemgt.acme_email_required"));
+      return;
+    }
     try {
       const next = await call("admin:nodemgt.settings.set", {
         cf_api_token: issuer.cf_api_token,
-        cf_zone_id: issuer.cf_zone_id,
         acme_email: issuer.acme_email,
       });
       setSettings(next);
@@ -2186,27 +2274,38 @@ export default function PlusAdminPage() {
     }
   };
 
-  const saveSubSettings = async () => {
+  const certShareDomain = firstShareDomain(settings.https_domains) || str(settings.sub_domain);
+
+  const saveSubSettings = async (patch?: Partial<typeof subCfg>) => {
+    const nextCfg = { ...subCfg, ...patch };
+    const reuse = Boolean(nextCfg.sub_reuse_https);
+    if (reuse && (!str(settings.https_certificate_path) || !str(settings.https_private_key_path))) {
+      toast.error(t("nodemgt.sub_reuse_https_missing"));
+      throw new Error("missing https");
+    }
+    const domain = reuse ? certShareDomain : "";
     try {
       const next = await call("admin:nodemgt.settings.set", {
-        sub_listen_port: Number(subCfg.sub_listen_port || 0),
-        sub_public_port: Number(subCfg.sub_public_port || 0),
-        sub_path: subCfg.sub_path,
-        sub_public_host: subCfg.sub_public_host,
+        sub_listen_port: Number(nextCfg.sub_listen_port || 0),
+        sub_public_port: Number(nextCfg.sub_public_port || 0),
+        sub_path: nextCfg.sub_path,
+        sub_public_host: domain || nextCfg.sub_public_host,
+        sub_reuse_https: reuse,
       });
       setSettings(next);
-      setSubCfg({
-        sub_listen_port: str((next as any)?.sub_listen_port, subCfg.sub_listen_port),
-        sub_public_port: Number((next as any)?.sub_public_port || 0) > 0 ? str((next as any)?.sub_public_port) : "",
-        sub_path: str((next as any)?.sub_path, subCfg.sub_path),
-        sub_public_host: str((next as any)?.sub_public_host, subCfg.sub_public_host),
-      });
+      setSubCfg(subCfgFromSettings(next as Record<string, any>));
       toast.success(t("nodemgt.saved"));
       await loadAfterChange();
     } catch (err) {
       toast.error(nodemgtErrorMessage(err, t));
+      throw err;
     }
   };
+
+  const rememberTemplates = useCallback((next: NodemgtTemplateList) => {
+    setTemplates(next);
+    patchNodemgtSnapshot({ templates: next });
+  }, []);
 
   const save = async () => {
     if (!sheet) return;
@@ -2373,17 +2472,21 @@ export default function PlusAdminPage() {
     if (!token) return "";
     const pathBase = str(settings.sub_path, subCfg.sub_path || "/");
     const path = `${pathBase.endsWith("/") ? pathBase : `${pathBase}/`}${token}`;
-    const host = str(settings.sub_public_host, subCfg.sub_public_host).replace(/\/$/, "");
+    const tls = settingOn(settings.sub_reuse_https) || Boolean(subCfg.sub_reuse_https);
+    const publicHost = str(settings.sub_public_host, subCfg.sub_public_host);
+    const domain = tls ? certShareDomain : "";
+    const host = (tls ? domain || publicHost : publicHost).replace(/\/$/, "");
     const listenPort = Number(settings.sub_listen_port || subCfg.sub_listen_port || 0);
     const proxyPort = Number(settings.sub_public_port || subCfg.sub_public_port || 0);
     const port = proxyPort > 0 ? proxyPort : listenPort;
     if (!host) return path;
-    let scheme = "http://";
+    let scheme = tls ? "https://" : "http://";
     let rest = host;
     if (host.toLowerCase().startsWith("https://")) {
       scheme = "https://";
       rest = host.slice(8);
     } else if (host.toLowerCase().startsWith("http://")) {
+      if (!tls) scheme = "http://";
       rest = host.slice(7);
     }
     const withPort = port > 0 && !rest.includes(":") ? `${rest}:${port}` : rest;
@@ -2474,21 +2577,18 @@ export default function PlusAdminPage() {
     ? t(sheet.form.id ? "nodemgt.edit" : "nodemgt.create") + " · " + t(`nodemgt.kind_${sheet.kind}`)
     : "";
 
-  if (tab === "templates") {
-    return (
-      <div className="flex flex-col gap-4 p-0 md:p-4" data-testid="nodemgt-templates-page">
-        <SubscriptionTemplates subs={subs} plans={plans} />
-      </div>
-    );
-  }
-
   return (
     <div
       className="flex flex-col gap-4 p-0 md:p-4"
-      data-testid="nodemgt-admin-page"
+      data-testid={tab === "subscriptions" && subPage === "templates" ? "nodemgt-templates-page" : "nodemgt-admin-page"}
       data-admin-route-pending={loading && !cached ? "true" : undefined}
     >
-      <AdminPageTitle description={t(`nodemgt.page_${tab}_help`, { defaultValue: t("nodemgt.description") })}>
+      <AdminPageTitle
+        description={t(
+          tab === "subscriptions" && subPage === "templates" ? "nodemgt.page_templates_help" : `nodemgt.page_${tab}_help`,
+          { defaultValue: t("nodemgt.description") },
+        )}
+      >
         {t(`nodemgt.tab_${tab}`)}
       </AdminPageTitle>
 
@@ -2526,101 +2626,166 @@ export default function PlusAdminPage() {
       ) : null}
 
       {tab === "subscriptions" ? (
-        <Paper variant="outlined" sx={{ ...panelSx, p: { xs: 1.5, sm: 2 } }}>
-          <Typography sx={{ fontWeight: 600, mb: 2 }}>{t("nodemgt.sub_access_title")}</Typography>
-          <Stack spacing={2}>
-            <ThreeCol>
-              <ReadyField
-                ready={!loading || Boolean(subCfg.sub_listen_port || subCfg.sub_path)}
-                label={t("nodemgt.sub_listen_port")}
-                value={subCfg.sub_listen_port}
-                onChange={(value) => setSubCfg((current) => ({ ...current, sub_listen_port: value }))}
-                helper={t("nodemgt.sub_listen_port_help")}
-              />
-              <ReadyField
-                ready={!loading || Boolean(subCfg.sub_listen_port || subCfg.sub_path)}
-                label={t("nodemgt.sub_public_port")}
-                value={subCfg.sub_public_port}
-                onChange={(value) => setSubCfg((current) => ({ ...current, sub_public_port: value }))}
-                helper={t("nodemgt.sub_public_port_help")}
-              />
-              <ReadyField
-                ready={!loading || Boolean(subCfg.sub_listen_port || subCfg.sub_path)}
-                label={t("nodemgt.sub_path")}
-                value={subCfg.sub_path}
-                onChange={(value) => setSubCfg((current) => ({ ...current, sub_path: value }))}
-                helper={t("nodemgt.sub_path_help")}
-              />
-            </ThreeCol>
-            <ReadyField
-              ready={!loading || Boolean(subCfg.sub_public_host || subCfg.sub_path)}
-              label={t("nodemgt.sub_public_host")}
-              value={subCfg.sub_public_host}
-              onChange={(value) => setSubCfg((current) => ({ ...current, sub_public_host: value }))}
-              placeholder="203.0.113.9"
-              helper={t("nodemgt.sub_public_host_help")}
+        <SubPageTabs.Root
+          value={subPage}
+          onValueChange={(value) => {
+            if (value === "list" || value === "access" || value === "templates") setSubPage(value);
+          }}
+        >
+          <AdminSheetTabs>
+            <SubPageTabs.List>
+              <SubPageTabs.Trigger value="list">
+                <AdminTabLabel icon={<LinkIcon size={18} />}>{t("nodemgt.sub_sheet_list")}</AdminTabLabel>
+              </SubPageTabs.Trigger>
+              <SubPageTabs.Trigger value="access">
+                <AdminTabLabel icon={<Globe size={18} />}>{t("nodemgt.sub_sheet_access")}</AdminTabLabel>
+              </SubPageTabs.Trigger>
+              <SubPageTabs.Trigger value="templates">
+                <AdminTabLabel icon={<Layers3 size={18} />}>{t("nodemgt.sub_sheet_templates")}</AdminTabLabel>
+              </SubPageTabs.Trigger>
+            </SubPageTabs.List>
+          </AdminSheetTabs>
+          {subPage === "access" ? (
+          <Stack spacing={1.5} sx={{ mt: 2 }}>
+            <Paper
+              variant="outlined"
+              className="admin-tab-panel"
+              sx={{ ...panelSx, p: { xs: 1.5, sm: 2 } }}
+            >
+              <Stack spacing={2}>
+                <ThreeCol>
+                  <ReadyField
+                    ready={!loading || Boolean(subCfg.sub_listen_port || subCfg.sub_path)}
+                    label={t("nodemgt.sub_listen_port")}
+                    value={subCfg.sub_listen_port}
+                    onChange={(value) => setSubCfg((current) => ({ ...current, sub_listen_port: value }))}
+                    helper={t("nodemgt.sub_listen_port_help")}
+                  />
+                  <ReadyField
+                    ready={!loading || Boolean(subCfg.sub_listen_port || subCfg.sub_path)}
+                    label={t("nodemgt.sub_public_port")}
+                    value={subCfg.sub_public_port}
+                    onChange={(value) => setSubCfg((current) => ({ ...current, sub_public_port: value }))}
+                    helper={t("nodemgt.sub_public_port_help")}
+                  />
+                  <ReadyField
+                    ready={!loading || Boolean(subCfg.sub_listen_port || subCfg.sub_path)}
+                    label={t("nodemgt.sub_path")}
+                    value={subCfg.sub_path}
+                    onChange={(value) => setSubCfg((current) => ({ ...current, sub_path: value }))}
+                    helper={t("nodemgt.sub_path_help")}
+                  />
+                </ThreeCol>
+                <ReadyField
+                  ready={!loading || Boolean(subCfg.sub_public_host || subCfg.sub_path)}
+                  label={t("nodemgt.sub_public_host")}
+                  value={subCfg.sub_reuse_https && certShareDomain ? certShareDomain : subCfg.sub_public_host}
+                  onChange={(value) => setSubCfg((current) => ({ ...current, sub_public_host: value }))}
+                  placeholder={subCfg.sub_reuse_https ? certShareDomain || "sub.example.com" : "203.0.113.9"}
+                  helper={t("nodemgt.sub_public_host_help")}
+                />
+                <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+                  <Button variant="contained" onClick={() => void saveSubSettings().catch(() => undefined)}>
+                    {t("nodemgt.save_sub_settings")}
+                  </Button>
+                </Box>
+              </Stack>
+            </Paper>
+            <SettingCardSwitch
+              title={t("nodemgt.sub_reuse_https")}
+              description={t("nodemgt.sub_reuse_https_help")}
+              defaultChecked={Boolean(subCfg.sub_reuse_https)}
+              onChange={async (next) => {
+                await saveSubSettings({
+                  sub_reuse_https: next,
+                  sub_public_host: next ? certShareDomain || subCfg.sub_public_host : subCfg.sub_public_host,
+                });
+              }}
             />
-            <Box>
-              <Button variant="contained" onClick={() => void saveSubSettings()}>
-                {t("nodemgt.save_sub_settings")}
-              </Button>
-            </Box>
           </Stack>
-        </Paper>
+          ) : null}
+        </SubPageTabs.Root>
       ) : null}
 
       {tab === "certs" ? (
-        <Paper variant="outlined" sx={{ ...panelSx, p: { xs: 1.5, sm: 2 } }}>
-          <Typography sx={{ fontWeight: 600, mb: 0.5 }}>{t("nodemgt.issuer_title")}</Typography>
-          <Typography color="text.secondary" sx={{ fontSize: 13, mb: 2 }}>
-            {t("nodemgt.cert_pending_help")}
-          </Typography>
-          <Stack
-            spacing={2}
-            component="form"
-            autoComplete="off"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void saveIssuer();
-            }}
+        <SubPageTabs.Root
+          value={certPage}
+          onValueChange={(value) => {
+            if (value === "list" || value === "issuer") setCertPage(value);
+          }}
+        >
+          <AdminSheetTabs>
+            <SubPageTabs.List>
+              <SubPageTabs.Trigger value="list">
+                <AdminTabLabel icon={<Shield size={18} />}>{t("nodemgt.cert_sheet_list")}</AdminTabLabel>
+              </SubPageTabs.Trigger>
+              <SubPageTabs.Trigger value="issuer">
+                <AdminTabLabel icon={<LockKeyhole size={18} />}>{t("nodemgt.cert_sheet_issuer")}</AdminTabLabel>
+              </SubPageTabs.Trigger>
+            </SubPageTabs.List>
+          </AdminSheetTabs>
+          {certPage === "issuer" ? (
+          <Paper
+            variant="outlined"
+            className="admin-tab-panel"
+            sx={{ ...panelSx, mt: 2, p: { xs: 1.5, sm: 2 } }}
           >
-            <TwoCol>
+            <Stack
+              spacing={2}
+              component="form"
+              autoComplete="off"
+              noValidate
+              onSubmit={(event) => {
+                event.preventDefault();
+                void saveIssuer();
+              }}
+            >
+              <Typography color="text.secondary" sx={{ fontSize: 13, lineHeight: 1.6 }}>
+                {t("nodemgt.cert_pending_help")}
+              </Typography>
               <Field
                 label={t("nodemgt.cf_token")}
                 type="password"
                 name="lite-plus-cf-dns-token"
                 autoComplete="off"
                 ignorePasswordManager
+                required
                 value={issuer.cf_api_token}
                 onChange={(value) => setIssuer((current) => ({ ...current, cf_api_token: value }))}
                 helper={settings.cf_api_token_set ? t("nodemgt.cf_token_set") : t("nodemgt.cf_token_help")}
               />
               <Field
-                label={t("nodemgt.cf_zone")}
-                name="lite-plus-cf-zone-id"
+                label={t("nodemgt.acme_email")}
+                name="lite-plus-acme-email"
                 autoComplete="off"
                 ignorePasswordManager
-                value={issuer.cf_zone_id}
-                onChange={(value) => setIssuer((current) => ({ ...current, cf_zone_id: value }))}
+                required
+                value={issuer.acme_email}
+                onChange={(value) => setIssuer((current) => ({ ...current, acme_email: value }))}
               />
-            </TwoCol>
-            <Field
-              label={t("nodemgt.acme_email")}
-              name="lite-plus-acme-email"
-              autoComplete="off"
-              ignorePasswordManager
-              value={issuer.acme_email}
-              onChange={(value) => setIssuer((current) => ({ ...current, acme_email: value }))}
-            />
-            <Box>
-              <Button variant="contained" onClick={() => void saveIssuer()}>
-                {t("nodemgt.save_issuer")}
-              </Button>
-            </Box>
-          </Stack>
-        </Paper>
+              <Stack direction="row" spacing={1.5} useFlexGap sx={{ flexWrap: "wrap", justifyContent: "flex-end" }}>
+                <Button type="button" variant="outlined" color="error" onClick={() => void clearIssuer()}>
+                  {t("nodemgt.clear_issuer")}
+                </Button>
+                <Button type="button" variant="contained" onClick={() => void saveIssuer()}>
+                  {t("nodemgt.save_issuer")}
+                </Button>
+              </Stack>
+            </Stack>
+          </Paper>
+          ) : null}
+        </SubPageTabs.Root>
       ) : null}
 
+      {tab === "subscriptions" && (hasNodemgtTemplates(templates) || !loading) ? (
+        <Box
+          hidden={subPage !== "templates"}
+          sx={{ display: subPage === "templates" ? "block" : "none" }}
+        >
+          <SubscriptionTemplates subs={subs} plans={plans} initial={templates} onChange={rememberTemplates} />
+        </Box>
+      ) : null}
+      {(tab === "subscriptions" && (subPage === "access" || subPage === "templates")) || (tab === "certs" && certPage === "issuer") ? null : (
       <AdminListShell>
           <AdminListFiltersBar>
             <Stack direction="row" spacing={1.5} useFlexGap sx={{ flexWrap: { xs: "wrap", md: "nowrap" }, alignItems: "center" }}>
@@ -2854,22 +3019,27 @@ export default function PlusAdminPage() {
                 { key: "domain", label: t("nodemgt.col_domain") },
                 { key: "node", label: t("nodemgt.col_node"), render: (row) => nodeName(row.node_uuid) },
                 { key: "status", label: t("nodemgt.col_status"), render: (row) => <StatusChip value={isFileCert(row) && row.status === "pending" ? "file_pending" : row.status} /> },
-                { key: "delivery", label: t("nodemgt.col_delivery"), render: (row) => <DeliveryChip status={nodeDelivery(row.node_uuid)?.status} error={nodeDelivery(row.node_uuid)?.last_error} /> },
-                { key: "fingerprint", label: t("nodemgt.col_fingerprint"), render: (row) => row.fingerprint || "—" },
+                {
+                  key: "delivery",
+                  label: t("nodemgt.col_delivery"),
+                  render: (row) => {
+                    const cmd = nodeDelivery(row.node_uuid);
+                    return (
+                      <DeliveryChip
+                        status={inboundDeliveryOf(row, cmd)}
+                        error={inboundTouched(row, cmd) ? cmd?.last_error : undefined}
+                      />
+                    );
+                  },
+                },
+                { key: "fingerprint", label: t("nodemgt.col_fingerprint"), render: (row) => <CellClamp value={row.fingerprint || "—"} maxWidth={160} /> },
                 {
                   key: "issuer",
                   label: t("nodemgt.col_issuer"),
-                  render: (row) => {
-                    if (isFileCert(row)) {
-                      return row.issuer && row.issuer !== "file"
-                        ? `${t("nodemgt.cert_source_file")} · ${row.issuer}`
-                        : t("nodemgt.cert_source_file");
-                    }
-                    return row.issuer || "—";
-                  },
+                  render: (row) => displayCertIssuer(row, t("nodemgt.cert_source_file"), t("nodemgt.cert_source_acme")),
                 },
                 { key: "expires", label: t("nodemgt.col_expires"), render: (row) => formatWhen(row.not_after) },
-                { key: "error", label: t("nodemgt.col_last_error"), render: (row) => nodemgtErrorMessage(row.last_error, t) || "—" },
+                { key: "error", label: t("nodemgt.col_last_error"), render: (row) => <CellClamp value={nodemgtErrorMessage(row.last_error, t) || "—"} maxWidth={280} /> },
                 {
                   key: "actions",
                   label: t("nodemgt.col_actions"),
@@ -2984,6 +3154,7 @@ export default function PlusAdminPage() {
             showWhenEmpty
           />
         </AdminListShell>
+      )}
 
       <SettingsSheetDialog
         open={Boolean(sheet)}
@@ -3869,8 +4040,14 @@ export default function PlusAdminPage() {
         }
       >
         {preview ? <Stack spacing={2}>
-          <TextField select size="small" label={t("nodemgt.tpl_client")} value={preview.target || ""} onChange={(event) => void previewSub(preview.subscriptionID || "", event.target.value)}>
-            <MenuItem value="">{t("nodemgt.tpl_default")}</MenuItem>
+          <TextField
+            select
+            size="small"
+            label={t("nodemgt.tpl_client")}
+            value={preview.target || "default"}
+            onChange={(event) => void previewSub(preview.subscriptionID || "", event.target.value === "default" ? "" : event.target.value)}
+          >
+            <MenuItem value="default">{t("nodemgt.tpl_default")}</MenuItem>
             {[...TEMPLATE_CLIENTS, "v2ray"].map((value) => <MenuItem key={value} value={value}>{value}</MenuItem>)}
           </TextField>
           <SubPreviewBody preview={preview} />

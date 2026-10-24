@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { displayExpiryInput, inboundShareHost, inboundSharePort, moveAdjacentIDs, nodemgtErrorMessage, nodemgtRpcErrorKey, normalizeExpiryInput, outboundFieldsFromInbound, outboundTagConflict, outboundTagFromInbound, randomInboundPort, randomRealityShortID, uuidForInbound } from "../src/pages/admin/nodemgt/inboundToOutbound.ts";
+import { displayExpiryInput, inboundShareHost, inboundSharePort, moveAdjacentIDs, nodemgtErrorMessage, nodemgtRpcErrorKey, nodemgtWarningMessage, normalizeExpiryInput, outboundFieldsFromInbound, outboundTagConflict, outboundTagFromInbound, randomInboundPort, randomRealityShortID, uuidForInbound } from "../src/pages/admin/nodemgt/inboundToOutbound.ts";
 
 test("uses node IP, listen address, or custom share host", () => {
   assert.equal(inboundShareHost({ share_strategy: "node" }, { ipv4: "203.0.113.9" }), "203.0.113.9");
@@ -124,6 +124,14 @@ test("admin RPC errors map to nodemgt i18n keys instead of raw English", () => {
     ["RPC Error -32602: cert and key paths required", "cert", "nodemgt.cert_paths_required"],
     ["RPC Error -32602: nodemgt: invalid: csr not allowed for file", "cert", "nodemgt.csr_not_allowed"],
     ["RPC Error -32602: nodemgt: node mismatch: csr cn", "cert", "nodemgt.node_mismatch"],
+    ["RPC Error -32602: nodemgt: invalid: unsupported template kind", "", "nodemgt.tpl_unsupported_kind"],
+    ["RPC Error -32602: nodemgt: invalid: template name and content required (maximum 1 MiB)", "", "nodemgt.tpl_content_required"],
+    ["RPC Error -32602: nodemgt: invalid: create a new template to change its kind", "", "nodemgt.tpl_kind_locked"],
+    ["RPC Error -32602: nodemgt: conflict: remove template bindings first", "", "nodemgt.tpl_bound_delete"],
+    ["RPC Error -32602: nodemgt: invalid: unsupported template client", "", "nodemgt.tpl_unsupported_client"],
+    ["unsupported subscription client", "", "nodemgt.tpl_unsupported_client"],
+    ["RPC Error -32602: nodemgt: invalid: template kind does not match client", "", "nodemgt.tpl_kind_mismatch"],
+    ["put remote node subscriptions in user extra links instead of proxy-providers", "", "nodemgt.tpl_remote_in_template"],
     ["RPC Error -32603: boom", "", "nodemgt.request_failed"],
     ["admin:nodemgt.inbound.list: RPC Error -32603: timeout", "", "nodemgt.request_failed"],
   ];
@@ -132,9 +140,27 @@ test("admin RPC errors map to nodemgt i18n keys instead of raw English", () => {
   }
   assert.equal(nodemgtErrorMessage("RPC Error -32602: address required", (key) => key), "nodemgt.address_required");
   assert.equal(nodemgtErrorMessage("certificate file not found", (key) => key), "certificate file not found");
+  assert.equal(
+    nodemgtWarningMessage("probe-in: unsupported by surge (vless)", (key, opts) => `${key}|${opts?.name}|${opts?.client}|${opts?.features}`),
+    "nodemgt.warn_unsupported_client|probe-in|surge|vless",
+  );
+  assert.equal(
+    nodemgtWarningMessage("JP VLESS: unsupported by surge (vless/reality)", (key, opts) => `${key}|${opts?.features}`),
+    "nodemgt.warn_unsupported_client|vless/reality",
+  );
+  assert.equal(nodemgtWarningMessage("An external node could not be parsed", (key) => key), "nodemgt.warn_extra_unparsed");
+  assert.equal(
+    nodemgtWarningMessage("An external node uses a protocol outside Lite-Plus subscription support", (key) => key),
+    "nodemgt.warn_extra_unsupported",
+  );
 
   const locales = ["zh_CN", "zh_TW", "en", "ja_JP"];
-  const keys = [...new Set(cases.map(([, , key]) => key.replace(/^nodemgt\./, "")))];
+  const keys = [
+    ...new Set(cases.map(([, , key]) => key.replace(/^nodemgt\./, ""))),
+    "warn_unsupported_client",
+    "warn_extra_unparsed",
+    "warn_extra_unsupported",
+  ];
   for (const locale of locales) {
     const file = new URL(`../src/i18n/locales/${locale}.json`, import.meta.url);
     const nodemgt = JSON.parse(readFileSync(file, "utf8")).nodemgt;

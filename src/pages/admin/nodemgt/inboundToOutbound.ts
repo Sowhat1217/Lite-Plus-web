@@ -146,6 +146,8 @@ export function normalizeExpiryInput(raw: string) {
 const NODEMGT_RPC_ERROR_RULES: Array<[RegExp, string]> = [
   [/outbound_tag_reserved|outbound tag reserved/i, "nodemgt.outbound_tag_reserved"],
   [/outbound_tag_duplicate|(?:conflict:.*)?outbound tag\b/i, "nodemgt.outbound_tag_duplicate"],
+  [/built-in https certificate required/i, "nodemgt.sub_reuse_https_missing"],
+  [/subscription certificate/i, "nodemgt.sub_tls_paths_required"],
   [/certificate required/i, "nodemgt.no_certs"],
   [/name and node required/i, "nodemgt.name_node_required"],
   [/domain and node required/i, "nodemgt.domain_node_required"],
@@ -165,6 +167,21 @@ const NODEMGT_RPC_ERROR_RULES: Array<[RegExp, string]> = [
   [/user expired/i, "nodemgt.user_expired"],
   [/empty secret/i, "nodemgt.empty_secret"],
   [/address required/i, "nodemgt.address_required"],
+  [/remove template bindings first/i, "nodemgt.tpl_bound_delete"],
+  [/template name and content required|template must be between/i, "nodemgt.tpl_content_required"],
+  [/create a new template to change its kind/i, "nodemgt.tpl_kind_locked"],
+  [/template kind does not match client/i, "nodemgt.tpl_kind_mismatch"],
+  [/unsupported template kind/i, "nodemgt.tpl_unsupported_kind"],
+  [/unsupported template client|unsupported subscription client/i, "nodemgt.tpl_unsupported_client"],
+  [/global scope_id must be empty/i, "nodemgt.tpl_global_scope"],
+  [/invalid template binding scope/i, "nodemgt.tpl_invalid_scope"],
+  [/invalid YAML template|invalid JSON template/i, "nodemgt.tpl_invalid_content"],
+  [/YAML template must be an object|JSON template must be an object/i, "nodemgt.tpl_invalid_object"],
+  [/user extra links/i, "nodemgt.tpl_remote_in_template"],
+  [/sing-box template requires an outbounds array|invalid sing-box outbound/i, "nodemgt.tpl_singbox_outbounds"],
+  [/native template requires/i, "nodemgt.tpl_native_sections"],
+  [/unknown outbound reference|unknown final outbound|unknown proxy reference|unknown rule policy|unknown route outbound|unknown native policy|invalid proxy group/i, "nodemgt.tpl_unknown_ref"],
+  [/duplicate or missing outbound tag|duplicate or missing proxy/i, "nodemgt.outbound_tag_duplicate"],
   [/ids required/i, "nodemgt.ids_required"],
   [/id required/i, "nodemgt.id_required"],
   [/name required/i, "nodemgt.name_required"],
@@ -193,6 +210,29 @@ export function nodemgtErrorMessage(
   if (!text.trim()) return "";
   const key = nodemgtRpcErrorKey(text, kind);
   return key ? translate(key) : text;
+}
+
+export function nodemgtWarningMessage(
+  raw: unknown,
+  translate: (key: string, options?: Record<string, string>) => string,
+) {
+  const text = String(raw ?? "").trim();
+  if (!text) return "";
+  const unsupported = text.match(/^(.+): unsupported by ([^()]+) \((.+)\)$/i);
+  if (unsupported) {
+    return translate("nodemgt.warn_unsupported_client", {
+      name: unsupported[1].trim(),
+      client: unsupported[2].trim(),
+      features: unsupported[3].trim(),
+    });
+  }
+  if (/^An external node could not be parsed$/i.test(text)) {
+    return translate("nodemgt.warn_extra_unparsed");
+  }
+  if (/protocol outside Lite-Plus subscription support/i.test(text)) {
+    return translate("nodemgt.warn_extra_unsupported");
+  }
+  return text;
 }
 
 export function outboundTagConflict(

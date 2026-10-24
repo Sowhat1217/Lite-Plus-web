@@ -1,5 +1,11 @@
 import { sameOriginApiPath, sameOriginFetchInit } from "@/utils/security";
 
+export type NodemgtTemplateList = {
+  templates: any[];
+  builtins: any[];
+  bindings: any[];
+};
+
 export type NodemgtSnapshot = {
   inbounds: any[];
   users: any[];
@@ -12,6 +18,7 @@ export type NodemgtSnapshot = {
   diag: Record<string, any>;
   settings: Record<string, any>;
   delivery: any[];
+  templates: NodemgtTemplateList;
   at: number;
 };
 
@@ -33,6 +40,7 @@ const NODEMGT_REQUESTS: NodemgtRequest[] = [
   { key: "diag", method: "admin:nodemgt.diag.status" },
   { key: "settings", method: "admin:nodemgt.settings.get" },
   { key: "delivery", method: "admin:nodemgt.control.status" },
+  { key: "templates", method: "admin:nodemgt.template.list" },
 ];
 
 const SNAPSHOT_TTL_MS = 12_000;
@@ -61,8 +69,17 @@ export function emptyNodemgtSnapshot(): NodemgtSnapshot {
     diag: {},
     settings: {},
     delivery: [],
+    templates: emptyNodemgtTemplates(),
     at: 0,
   };
+}
+
+export function emptyNodemgtTemplates(): NodemgtTemplateList {
+  return { templates: [], builtins: [], bindings: [] };
+}
+
+export function hasNodemgtTemplates(value?: NodemgtTemplateList | null) {
+  return Boolean(value && (value.templates.length || value.builtins.length || value.bindings.length));
 }
 
 export function getNodemgtSnapshot(): NodemgtSnapshot | null {
@@ -84,9 +101,13 @@ export function nodemgtPrimaryMethods(tab: string): string[] {
     case "certs":
       return ["admin:nodemgt.cert.list", "admin:nodemgt.settings.get"];
     case "subscriptions":
-      return ["admin:nodemgt.settings.get", "admin:nodemgt.subscription.list"];
     case "templates":
-      return ["admin:nodemgt.subscription.list", "admin:nodemgt.plan.list"];
+      return [
+        "admin:nodemgt.settings.get",
+        "admin:nodemgt.subscription.list",
+        "admin:nodemgt.plan.list",
+        "admin:nodemgt.template.list",
+      ];
     case "audit":
       return ["admin:nodemgt.audit.list"];
     default:
@@ -214,6 +235,10 @@ function assignSnapshotValue(
   key: NodemgtRequest["key"],
   value: unknown,
 ) {
+  if (key === "templates") {
+    target.templates = asTemplateList(value);
+    return;
+  }
   if (key === "diag" || key === "settings") {
     target[key] = value && typeof value === "object" && !Array.isArray(value)
       ? (value as Record<string, any>)
@@ -221,6 +246,16 @@ function assignSnapshotValue(
     return;
   }
   target[key] = asList(value);
+}
+
+function asTemplateList(value: unknown): NodemgtTemplateList {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return emptyNodemgtTemplates();
+  const row = value as NodemgtTemplateList;
+  return {
+    templates: asList(row.templates),
+    builtins: asList(row.builtins),
+    bindings: asList(row.bindings),
+  };
 }
 
 function isTransientFetchError(err: unknown) {
