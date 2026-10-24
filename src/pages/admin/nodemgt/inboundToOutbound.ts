@@ -22,6 +22,12 @@ function issuedCertDomain(
   return domain;
 }
 
+function nodeIPForStack(stack: string | undefined, ipv4: string, ipv6: string) {
+  const family = String(stack || "dual").toLowerCase();
+  if (family === "ipv4") return ipv4 || ipv6;
+  return ipv6 || ipv4;
+}
+
 export function inboundShareHost(
   inbound: any,
   node?: { ipv4?: string; ipv6?: string } | null,
@@ -31,15 +37,16 @@ export function inboundShareHost(
   const listen = String(inbound?.listen || "").trim();
   const ipv4 = String(node?.ipv4 || "").trim();
   const ipv6 = String(node?.ipv6 || "").trim();
+  const nodeIP = nodeIPForStack(inbound?.stack, ipv4, ipv6);
   let host = "";
   if (strategy === "listen") {
     host = wildcardHost(listen) ? "" : listen.replace(/^\[/, "").replace(/]$/, "");
   } else if (strategy === "other" || strategy === "specified") {
     host = String(inbound?.public_host || "").trim();
   } else {
-    host = issuedCertDomain(inbound, cert) || ipv4 || ipv6;
+    host = issuedCertDomain(inbound, cert) || nodeIP;
   }
-  if (!host) host = issuedCertDomain(inbound, cert) || ipv4 || ipv6;
+  if (!host) host = issuedCertDomain(inbound, cert) || nodeIP;
   if (!host && !wildcardHost(listen)) host = listen.replace(/^\[/, "").replace(/]$/, "");
   return host;
 }

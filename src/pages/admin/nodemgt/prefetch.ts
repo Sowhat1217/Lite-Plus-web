@@ -45,6 +45,7 @@ type InflightPrefetch = {
 let snapshot: NodemgtSnapshot | null = null;
 let inflight: InflightPrefetch | null = null;
 let rpcSeq = 1;
+let fetchGen = 0;
 const partialListeners = new Set<(snap: NodemgtSnapshot) => void>();
 
 export function emptyNodemgtSnapshot(): NodemgtSnapshot {
@@ -107,6 +108,15 @@ export function resetNodemgtSnapshot() {
   snapshot = null;
   inflight = null;
   rpcSeq = 1;
+  fetchGen += 1;
+}
+
+export function patchNodemgtSnapshot(patch: Partial<NodemgtSnapshot>): NodemgtSnapshot {
+  fetchGen += 1;
+  return rememberNodemgtSnapshot({
+    ...(snapshot ?? emptyNodemgtSnapshot()),
+    ...patch,
+  }, false);
 }
 
 function throwPrimaryRPCErrors(primary: readonly string[] | undefined, errors: Map<string, Error>) {
@@ -121,24 +131,35 @@ function throwPrimaryRPCErrors(primary: readonly string[] | undefined, errors: M
 
 export async function prefetchNodemgtAdmin(options?: {
   force?: boolean;
+  reload?: boolean;
   primary?: readonly string[];
   onPartial?: (snap: NodemgtSnapshot) => void;
 }): Promise<NodemgtSnapshot> {
   const fresh = Boolean(snapshot?.at) && Date.now() - snapshot!.at < SNAPSHOT_TTL_MS;
-  if (!options?.force && fresh && snapshot) return snapshot;
+  if (!options?.force && !options?.reload && fresh && snapshot) return snapshot;
+  if (options?.reload) fetchGen += 1;
   if (options?.onPartial) partialListeners.add(options.onPartial);
   try {
     if (inflight) {
       if (snapshot) options?.onPartial?.(snapshot);
       const batch = inflight;
       await batch.run;
+      if (!options?.reload) {
+        throwPrimaryRPCErrors(options?.primary, batch.errors);
+        return snapshot ?? emptyNodemgtSnapshot();
+      }
+    }
+    if (inflight) {
+      const batch = inflight;
+      await batch.run;
       throwPrimaryRPCErrors(options?.primary, batch.errors);
       return snapshot ?? emptyNodemgtSnapshot();
     }
     const errors = new Map<string, Error>();
+    const gen = fetchGen;
     const batch: InflightPrefetch = {
       errors,
-      run: fetchNodemgtAdmin(options, errors).finally(() => {
+      run: fetchNodemgtAdmin(options, errors, gen).finally(() => {
         if (inflight === batch) inflight = null;
       }),
     };
@@ -154,9 +175,14 @@ export async function prefetchNodemgtAdmin(options?: {
 async function fetchNodemgtAdmin(
   options: { primary?: readonly string[] } | undefined,
   errors: Map<string, Error>,
+  gen: number,
 ): Promise<NodemgtSnapshot> {
   const next = snapshot ? { ...snapshot } : emptyNodemgtSnapshot();
   const primary = new Set(options?.primary ?? []);
+  const remember = (done: boolean) => {
+    if (gen !== fetchGen) return snapshot ?? next;
+    return rememberNodemgtSnapshot(next, done);
+  };
   const run = async (request: NodemgtRequest) => {
     try {
       const value = await rpcCall(request.method, request.params);
@@ -173,10 +199,10 @@ async function fetchNodemgtAdmin(
     ? NODEMGT_REQUESTS.filter((request) => !primary.has(request.method))
     : [];
   await Promise.all(first.map((request) => run(request)));
-  rememberNodemgtSnapshot(next, rest.length === 0 && errors.size === 0);
+  remember(rest.length === 0 && errors.size === 0);
   if (rest.length) {
     await Promise.all(rest.map((request) => run(request)));
-    rememberNodemgtSnapshot(next, errors.size === 0);
+    remember(errors.size === 0);
   }
   return snapshot ?? next;
 }
@@ -195,27 +221,45 @@ function assignSnapshotValue(
   target[key] = asList(value);
 }
 
+function isTransientFetchError(err: unknown) {
+  const text = err instanceof Error ? err.message : String(err ?? "");
+  return /failed to fetch|networkerror|load failed|network request failed/i.test(text);
+}
+
 async function rpcCall(method: string, params?: Record<string, unknown>) {
-  const response = await fetch(
-    sameOriginApiPath("/api/rpc2"),
-    sameOriginFetchInit({
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        method,
-        params: params ?? {},
-        id: rpcSeq++,
-      }),
-    }),
-  );
-  const payload = (await response.json().catch(() => null)) as
-    | { result?: unknown; error?: { message?: string } }
-    | null;
-  if (!response.ok || !payload || payload.error) {
-    throw new Error(payload?.error?.message || `HTTP ${response.status}`);
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const response = await fetch(
+        sameOriginApiPath("/api/rpc2"),
+        sameOriginFetchInit({
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            method,
+            params: params ?? {},
+            id: rpcSeq++,
+          }),
+        }),
+      );
+      const payload = (await response.json().catch(() => null)) as
+        | { result?: unknown; error?: { message?: string } }
+        | null;
+      if (!response.ok || !payload || payload.error) {
+        throw new Error(payload?.error?.message || `HTTP ${response.status}`);
+      }
+      return payload.result;
+    } catch (err) {
+      lastError = err;
+      if (attempt === 0 && isTransientFetchError(err)) {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        continue;
+      }
+      throw err instanceof Error ? err : new Error(String(err));
+    }
   }
-  return payload.result;
+  throw lastError instanceof Error ? lastError : new Error(String(lastError));
 }
 
 function asList(data: unknown): any[] {

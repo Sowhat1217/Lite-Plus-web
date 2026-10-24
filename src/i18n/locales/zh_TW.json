@@ -1714,7 +1714,7 @@
     "share_specified": "指定地址",
     "share_specified_required": "選擇指定地址時必须填写公开地址。",
     "share_strategy": "分享地址",
-    "share_strategy_help": "節點地址優先用該節點已簽發的憑證域名，沒有域名才用公網 IP。入站監聽地址用上面的監聽；選其他時再填地址。",
+    "share_strategy_help": "節點地址優先用該節點已簽發的憑證域名；沒有域名時，僅 IPv6 / 雙棧用該節點 IPv6，僅 IPv4 用 IPv4。入站監聽地址用上面的監聽；選其他時再填地址。",
     "sheet_advanced": "高级設定",
     "sheet_basic": "基础設定",
     "sheet_inbounds": "入站",

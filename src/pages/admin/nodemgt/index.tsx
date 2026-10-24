@@ -67,6 +67,7 @@ import { parseShareLink } from "./shareLink";
 import {
   getNodemgtSnapshot,
   nodemgtPrimaryMethods,
+  patchNodemgtSnapshot,
   prefetchNodemgtAdmin,
   type NodemgtSnapshot,
 } from "./prefetch";
@@ -195,6 +196,44 @@ function asList(data: unknown): any[] {
   if (data && typeof data === "object") return [data];
   return [];
 }
+
+function mergeById(rows: any[], row: any) {
+  const id = str(row?.id);
+  if (!id) return rows;
+  return [...rows.filter((item) => str(item?.id) !== id), row];
+}
+
+function userViewFromUpsert(raw: any) {
+  if (!raw || typeof raw !== "object") return null;
+  const { secret: _secret, ...view } = raw;
+  return str(view.id) ? view : null;
+}
+
+function upsertedRow(kind: SheetKind, raw: any) {
+  if (kind === "user") return userViewFromUpsert(raw);
+  if (!raw || typeof raw !== "object" || raw.ok === true || !str(raw.id)) return null;
+  return raw;
+}
+
+const SNAPSHOT_LIST_KEY: Record<SheetKind, "inbounds" | "users" | "plans" | "certs" | "subs" | "outbounds" | "routes"> = {
+  inbound: "inbounds",
+  user: "users",
+  plan: "plans",
+  cert: "certs",
+  subscription: "subs",
+  outbound: "outbounds",
+  route: "routes",
+};
+
+const DELETE_LIST_KEY: Record<string, "inbounds" | "users" | "plans" | "certs" | "subs" | "outbounds" | "routes"> = {
+  "admin:nodemgt.inbound.delete": "inbounds",
+  "admin:nodemgt.user.delete": "users",
+  "admin:nodemgt.plan.delete": "plans",
+  "admin:nodemgt.cert.delete": "certs",
+  "admin:nodemgt.subscription.delete": "subs",
+  "admin:nodemgt.outbound.delete": "outbounds",
+  "admin:nodemgt.route.delete": "routes",
+};
 
 function str(value: unknown, fallback = "") {
   return value == null ? fallback : String(value);
@@ -1789,18 +1828,55 @@ export default function PlusAdminPage() {
     setLoading(false);
   }, []);
 
-  const load = useCallback(async (opts?: { force?: boolean }) => {
-    const force = opts?.force !== false;
+  const commitRows = useCallback((
+    key: "inbounds" | "users" | "plans" | "certs" | "subs" | "outbounds" | "routes",
+    mutate: (rows: any[]) => any[],
+  ) => {
+    const patch = (current: any[]) => {
+      const next = mutate(current);
+      patchNodemgtSnapshot({ [key]: next });
+      return next;
+    };
+    switch (key) {
+      case "inbounds":
+        setInbounds(patch);
+        break;
+      case "users":
+        setUsers(patch);
+        break;
+      case "plans":
+        setPlans(patch);
+        break;
+      case "certs":
+        setCerts(patch);
+        break;
+      case "subs":
+        setSubs(patch);
+        break;
+      case "outbounds":
+        setOutbounds(patch);
+        break;
+      case "routes":
+        setRoutes(patch);
+        break;
+    }
+  }, []);
+
+  const load = useCallback(async (opts?: { force?: boolean; reload?: boolean }) => {
+    const reload = Boolean(opts?.reload);
+    const force = opts?.force !== false || reload;
     if (firstLoad.current && !getNodemgtSnapshot()) setLoading(true);
     try {
       const snap = await prefetchNodemgtAdmin({
         force,
+        reload,
         primary: nodemgtPrimaryMethods(tabRef.current),
         onPartial: applySnapshot,
       });
       applySnapshot(snap);
       return snap.delivery;
     } catch (err) {
+      if (reload) throw err;
       toast.error(nodemgtErrorMessage(err, t));
       return [] as any[];
     } finally {
@@ -1808,6 +1884,20 @@ export default function PlusAdminPage() {
       setLoading(false);
     }
   }, [applySnapshot, t]);
+
+  const loadAfterChange = useCallback(async () => {
+    let lastErr: unknown;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        return await load({ force: true, reload: true });
+      } catch (err) {
+        lastErr = err;
+        await new Promise((resolve) => window.setTimeout(resolve, 250 * (attempt + 1)));
+      }
+    }
+    toast.error(nodemgtErrorMessage(lastErr, t));
+    return getNodemgtSnapshot()?.delivery ?? [];
+  }, [load, t]);
 
   useEffect(() => {
     void load({ force: !getNodemgtSnapshot() });
@@ -2105,7 +2195,7 @@ export default function PlusAdminPage() {
         sub_public_host: str((next as any)?.sub_public_host, subCfg.sub_public_host),
       });
       toast.success(t("nodemgt.saved"));
-      await load();
+      await loadAfterChange();
     } catch (err) {
       toast.error(nodemgtErrorMessage(err, t));
     }
@@ -2117,6 +2207,7 @@ export default function PlusAdminPage() {
     setError("");
     try {
       const form = sheet.form;
+      let saved: any;
       if (sheet.kind === "inbound") {
         if (form.security === "tls" && !form.cert_id) {
           setError(t("nodemgt.no_certs"));
@@ -2126,7 +2217,7 @@ export default function PlusAdminPage() {
           setError(t("nodemgt.share_other_required"));
           return;
         }
-        await call("admin:nodemgt.inbound.upsert", inboundUpsertBody(form));
+        saved = await call("admin:nodemgt.inbound.upsert", inboundUpsertBody(form));
       } else if (sheet.kind === "user") {
         const inboundIds = form.inbound_ids.split(",").map((item) => item.trim()).filter(Boolean);
         if (!inboundIds.length) {
@@ -2143,7 +2234,7 @@ export default function PlusAdminPage() {
           setError(t("nodemgt.extra_link_value_required"));
           return;
         }
-        const created = await call("admin:nodemgt.user.upsert", {
+        saved = await call("admin:nodemgt.user.upsert", {
           id: form.id || undefined,
           username: form.username,
           display_name: form.display_name,
@@ -2157,12 +2248,12 @@ export default function PlusAdminPage() {
           status: form.enabled === "false" ? "disabled" : "active",
           extra_links: extraLinks,
         });
-        if (!form.id && created?.id) {
-          const cred = await call("admin:nodemgt.credential.issue", { user_id: created.id, kind: "uuid" });
-          setSecret(str(cred?.secret));
+        if (!form.id) {
+          const secret = str(saved?.secret);
+          if (secret) setSecret(secret);
         }
       } else if (sheet.kind === "plan") {
-        await call("admin:nodemgt.plan.upsert", {
+        saved = await call("admin:nodemgt.plan.upsert", {
           id: form.id || undefined,
           name: form.name,
           traffic_bytes: giBToBytes(form.traffic_gib),
@@ -2171,7 +2262,7 @@ export default function PlusAdminPage() {
           device_limit: Number(form.device_limit || 0),
         });
       } else if (sheet.kind === "cert") {
-        await call("admin:nodemgt.cert.request", {
+        saved = await call("admin:nodemgt.cert.request", {
           id: form.id || undefined,
           domain: form.domain,
           node_uuid: form.node_uuid,
@@ -2181,7 +2272,7 @@ export default function PlusAdminPage() {
           key_path: form.source === "file" ? form.key_path : "",
         });
       } else if (sheet.kind === "subscription") {
-        await call("admin:nodemgt.subscription.upsert", subscriptionUpsertBody(form));
+        saved = await call("admin:nodemgt.subscription.upsert", subscriptionUpsertBody(form));
       } else if (sheet.kind === "outbound") {
         const clash = outboundTagConflict(form.name, form.node_uuid, outbounds, form.id);
         if (clash === "reserved") {
@@ -2192,18 +2283,20 @@ export default function PlusAdminPage() {
           setError(t("nodemgt.outbound_tag_duplicate"));
           return;
         }
-        await call("admin:nodemgt.outbound.upsert", outboundUpsertBody(form));
+        saved = await call("admin:nodemgt.outbound.upsert", outboundUpsertBody(form));
       } else if (sheet.kind === "route") {
         if (!form.outbound_id) {
           setError(t("nodemgt.route_outbound_required"));
           return;
         }
-        await call("admin:nodemgt.route.upsert", routeUpsertBody(form));
+        saved = await call("admin:nodemgt.route.upsert", routeUpsertBody(form));
       }
+      const row = upsertedRow(sheet.kind, saved);
+      if (row) commitRows(SNAPSHOT_LIST_KEY[sheet.kind], (rows) => mergeById(rows, row));
       const nodeUUID = form.node_uuid;
       const syncsNode = sheet.kind === "inbound" || sheet.kind === "outbound" || sheet.kind === "route" || sheet.kind === "user" || sheet.kind === "cert";
       closeSheet();
-      const rows = await load();
+      const rows = await loadAfterChange();
       if (syncsNode) toastAfterSync(nodeUUID, rows);
       else toast.success(t("nodemgt.saved"));
     } catch (err) {
@@ -2216,9 +2309,11 @@ export default function PlusAdminPage() {
   const removeRow = async (method: string, id: string) => {
     try {
       await call(method, { id });
+      const key = DELETE_LIST_KEY[method];
+      if (key) commitRows(key, (rows) => rows.filter((item) => str(item?.id) !== id));
       closeSheet();
-      const rows = await load();
-      toastAfterSync(undefined, rows);
+      toast.success(t("nodemgt.saved"));
+      void load({ force: true, reload: true }).catch(() => undefined);
     } catch (err) {
       toast.error(nodemgtErrorMessage(err, t));
     }
@@ -2227,16 +2322,19 @@ export default function PlusAdminPage() {
   const toggleRowEnabled = async (kind: "inbound" | "outbound" | "route" | "subscription", row: any, enabled: boolean) => {
     const formEnabled = enabled ? "true" : "false";
     try {
+      let saved: any;
       if (kind === "inbound") {
-        await call("admin:nodemgt.inbound.upsert", inboundUpsertBody({ ...inboundForm(row), enabled: formEnabled }));
+        saved = await call("admin:nodemgt.inbound.upsert", inboundUpsertBody({ ...inboundForm(row), enabled: formEnabled }));
       } else if (kind === "outbound") {
-        await call("admin:nodemgt.outbound.upsert", outboundUpsertBody({ ...outboundForm(row), enabled: formEnabled }));
+        saved = await call("admin:nodemgt.outbound.upsert", outboundUpsertBody({ ...outboundForm(row), enabled: formEnabled }));
       } else if (kind === "route") {
-        await call("admin:nodemgt.route.upsert", routeUpsertBody({ ...routeForm(row), enabled: formEnabled }));
+        saved = await call("admin:nodemgt.route.upsert", routeUpsertBody({ ...routeForm(row), enabled: formEnabled }));
       } else {
-        await call("admin:nodemgt.subscription.upsert", subscriptionUpsertBody({ ...subscriptionForm(row), enabled: formEnabled }));
+        saved = await call("admin:nodemgt.subscription.upsert", subscriptionUpsertBody({ ...subscriptionForm(row), enabled: formEnabled }));
       }
-      toastAfterSync(row.node_uuid, await load());
+      const next = upsertedRow(kind, saved);
+      if (next) commitRows(SNAPSHOT_LIST_KEY[kind], (rows) => mergeById(rows, next));
+      toastAfterSync(row.node_uuid, await loadAfterChange());
     } catch (err) {
       toast.error(nodemgtErrorMessage(err, t));
     }
@@ -2246,7 +2344,8 @@ export default function PlusAdminPage() {
     try {
       const user = users.find((row) => row.id === id);
       await call("admin:nodemgt.user.setStatus", { id, status, operation_id: newOp() });
-      toastAfterSync(user?.node_uuid, await load());
+      commitRows("users", (rows) => rows.map((row) => (str(row?.id) === id ? { ...row, status } : row)));
+      toastAfterSync(user?.node_uuid, await loadAfterChange());
     } catch (err) {
       toast.error(nodemgtErrorMessage(err, t));
     }
@@ -2256,7 +2355,7 @@ export default function PlusAdminPage() {
     try {
       const user = users.find((row) => row.id === userId);
       await call("admin:nodemgt.assignment.renew", { user_id: userId, operation_id: newOp() });
-      toastAfterSync(user?.node_uuid, await load());
+      toastAfterSync(user?.node_uuid, await loadAfterChange());
     } catch (err) {
       toast.error(nodemgtErrorMessage(err, t));
     }
@@ -2305,7 +2404,7 @@ export default function PlusAdminPage() {
         cert_path: isFileCert(row) ? str(row.cert_path) : "",
         key_path: isFileCert(row) ? str(row.key_path) : "",
       });
-      toastAfterSync(row.node_uuid, await load());
+      toastAfterSync(row.node_uuid, await loadAfterChange());
     } catch (err) {
       toast.error(nodemgtErrorMessage(err, t));
     }
@@ -2324,7 +2423,7 @@ export default function PlusAdminPage() {
     if (!ids) return;
     try {
       await call("admin:nodemgt.inbound.reorder", { node_uuid: nodeFilter || "", ids });
-      await load();
+      await loadAfterChange();
     } catch (err) {
       toast.error(nodemgtErrorMessage(err, t));
     }

@@ -1714,7 +1714,7 @@
     "share_specified": "指定アドレス",
     "share_specified_required": "指定アドレスを選んだ場合は公開アドレスが必要です。",
     "share_strategy": "共有アドレス",
-    "share_strategy_help": "ノードアドレスは発行済み証明書のドメインを優先し、なければ公開 IP です。待受アドレスは上の Listen。その他を選ぶとアドレス欄が出ます。",
+    "share_strategy_help": "ノードアドレスは発行済み証明書のドメインを優先します。ドメインがなければ、IPv6 のみ / デュアルスタックはノードの IPv6、IPv4 のみは IPv4 を使います。待受アドレスは上の Listen。その他を選ぶとアドレス欄が出ます。",
     "sheet_advanced": "詳細",
     "sheet_basic": "基本",
     "sheet_inbounds": "インバウンド",

@@ -27,3 +27,24 @@ test("choosing reality fills a short id instead of leaving the field blank", () 
 test("new outbound copies uuid from the inbound's granted user", () => {
   assert.match(source, /const uuid = uuidForInbound\(inbound, users\) \|\| sheet\?\.form\.uuid \|\| ""/);
 });
+
+test("new user save uses upsert secret instead of a second credential issue", () => {
+  assert.match(source, /const secret = str\(saved\?\.secret\)/);
+  assert.doesNotMatch(source, /admin:nodemgt\.credential\.issue/);
+});
+
+test("save and delete patch the list before reload so a fetch failure cannot hide the change", () => {
+  assert.match(source, /patchNodemgtSnapshot/);
+  assert.match(source, /userViewFromUpsert/);
+  assert.match(source, /loadAfterChange/);
+  assert.match(source, /reload:\s*true/);
+  assert.match(source, /DELETE_LIST_KEY/);
+  assert.match(source, /commitRows\(key/);
+});
+
+test("delete toasts as soon as the row is gone instead of waiting for the full reload", () => {
+  assert.match(
+    source,
+    /const removeRow = async \(method: string, id: string\) => \{[\s\S]*?toast\.success\(t\("nodemgt.saved"\)\);[\s\S]*?void load\(\{ force: true, reload: true \}\)/,
+  );
+});

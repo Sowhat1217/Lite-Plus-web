@@ -1714,7 +1714,7 @@
     "share_specified": "Specified address",
     "share_specified_required": "Public host is required when using a specified address.",
     "share_strategy": "Share address",
-    "share_strategy_help": "Node address prefers an issued certificate domain on that node, then the public IP. Inbound listen address uses the listen field above. Other shows an address field.",
+    "share_strategy_help": "Node address prefers an issued certificate domain on that node. Without a domain, IPv6-only and dual-stack use the node IPv6; IPv4-only uses IPv4. Inbound listen address uses the listen field above. Other shows an address field.",
     "sheet_advanced": "Advanced",
     "sheet_basic": "Basics",
     "sheet_inbounds": "Inbounds",

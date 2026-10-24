@@ -15,8 +15,9 @@ const securitySource = readFileSync(path.join(webRoot, "src/utils/security.ts"),
 
 test("prefetch does not cache a failed RPC batch as a fresh snapshot", () => {
   assert.match(prefetchSource, /errors\.set\(request\.method, error\)/);
-  assert.match(prefetchSource, /rememberNodemgtSnapshot\(next, rest\.length === 0 && errors\.size === 0\)/);
-  assert.match(prefetchSource, /rememberNodemgtSnapshot\(next, errors\.size === 0\)/);
+  assert.match(prefetchSource, /remember\(rest\.length === 0 && errors\.size === 0\)/);
+  assert.match(prefetchSource, /remember\(errors\.size === 0\)/);
+  assert.match(prefetchSource, /if \(gen !== fetchGen\) return snapshot \?\? next;/);
   assert.match(prefetchSource, /throwPrimaryRPCErrors/);
   assert.match(prefetchSource, /if \(error\) throw error/);
   assert.match(prefetchSource, /throwPrimaryRPCErrors\(options\?\.primary, batch\.errors\)/);
@@ -27,10 +28,18 @@ test("prefetch does not cache a failed RPC batch as a fresh snapshot", () => {
 function loadPrefetch(mode: string, userGate?: Promise<void>) {
   const requests: string[] = [];
   const context = vm.createContext({
+    setTimeout,
     fetch: async (_url: string, init: { body: string }) => {
       const { method } = JSON.parse(init.body);
       requests.push(method);
       if (userGate && method === "admin:nodemgt.user.list") await userGate;
+      if (
+        mode === "users_network_once" &&
+        method === "admin:nodemgt.user.list" &&
+        requests.filter((item) => item === method).length === 1
+      ) {
+        throw new TypeError("Failed to fetch");
+      }
       const failed =
         mode === "all_fail" ||
         (mode === "primary_users_fail" && method === "admin:nodemgt.user.list") ||
@@ -110,4 +119,31 @@ test("prefetch still throws a lone certs primary failure", async () => {
   assert.equal(result.rejected, true);
   assert.match(String(result.error), /admin:nodemgt\.cert\.list/);
   assert.equal(api.getNodemgtSnapshot()?.at > 0, false);
+});
+
+test("reload waits for the in-flight batch then fetches again", async () => {
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const { api, requests } = loadPrefetch("", gate);
+  const first = outcome(api.prefetchNodemgtAdmin({ force: true, primary: api.nodemgtPrimaryMethods("users") }));
+  const reload = outcome(api.prefetchNodemgtAdmin({
+    force: true,
+    reload: true,
+    primary: api.nodemgtPrimaryMethods("users"),
+  }));
+  release();
+  const [firstResult, reloadResult] = await Promise.all([first, reload]);
+  assert.equal(firstResult.rejected, false);
+  assert.equal(reloadResult.rejected, false);
+  assert.equal(requests.length, 22);
+});
+
+test("prefetch retries a transient Failed to fetch on the primary list", async () => {
+  const { api, requests } = loadPrefetch("users_network_once");
+  const result = await outcome(api.prefetchNodemgtAdmin({ force: true, primary: api.nodemgtPrimaryMethods("users") }));
+  assert.equal(result.rejected, false);
+  assert.equal(result.users, 1);
+  assert.ok(requests.filter((method) => method === "admin:nodemgt.user.list").length >= 2);
 });
