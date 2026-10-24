@@ -78,6 +78,11 @@
           "icon": "FileText"
         },
         {
+          "labelKey": "nodemgt.tab_templates",
+          "path": "/admin/nodemgt/templates",
+          "icon": "FileText"
+        },
+        {
           "labelKey": "nodemgt.tab_certs",
           "path": "/admin/nodemgt/certificates",
           "icon": "Globe"

@@ -85,6 +85,8 @@ export function nodemgtPrimaryMethods(tab: string): string[] {
       return ["admin:nodemgt.cert.list", "admin:nodemgt.settings.get"];
     case "subscriptions":
       return ["admin:nodemgt.settings.get", "admin:nodemgt.subscription.list"];
+    case "templates":
+      return ["admin:nodemgt.subscription.list", "admin:nodemgt.plan.list"];
     case "audit":
       return ["admin:nodemgt.audit.list"];
     default:
